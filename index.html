@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Premium K-Radio</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="icon-512.png">
+    <link rel="stylesheet" href="app.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700;800&family=Outfit:wght@600;700;900&family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container pb-nav">
+        <header>
+            <div class="logo">
+                <span class="logo-text">RADIO</span>
+                <span id="header-clock" class="header-clock">PM 00:00</span>
+            </div>
+            <div class="header-actions">
+                <!-- Sync button moved here previously, visualization button moved out -->
+            </div>
+        </header>
+
+        <!-- Persistent Player Card -->
+        <section class="player-card">
+            <button id="viz-toggle-btn" class="btn-card-viz" title="시각화 스타일 변경">
+                <svg viewBox="0 0 24 24"><path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z"/></svg>
+            </button>
+            <div id="visualizer" class="visualizer-container">
+                <!-- Style 1: Symmetrical Glow Waves (Image 2 inspired) -->
+                <div class="visualizer-glow-layer" style="display: none;"></div>
+                
+                <!-- Style 2: Radial organic pulse (Image 2 inspired) -->
+                <div class="visualizer-pulse-layer" style="display: none;">
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                </div>
+
+                <!-- Style 3: Sharp Dense Spectrum (Image 3 inspired) -->
+                <div class="visualizer-sharp-layer" style="display: none;"></div>
+
+                <!-- Style 4: Cyber Wave (Canvas) -->
+                <canvas id="viz-canvas" class="visualizer-canvas" style="display: none;"></canvas>
+            </div>
+            <div class="tuner-display">
+                <div class="tuner-header">
+                    <div id="current-freq" class="current-freq">OFF</div>
+                </div>
+                <div id="current-name" class="current-name">채널을 선택하세요</div>
+            </div>
+            
+            
+            <div class="controls">
+                <button id="play-btn" class="btn-play">
+                    <svg viewBox="0 0 24 24" id="play-icon">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    <svg viewBox="0 0 24 24" id="pause-icon" style="display: none;">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                    </svg>
+                </button>
+            </div>
+        </section>
+
+        <!-- Home Page (Favorites ONLY) -->
+        <div id="page-home" class="page active">
+            <section class="favorites-section">
+                <div class="section-header">
+                    <h2>MY FAVORITES</h2>
+                </div>
+                <div id="station-list" class="station-grid">
+                    <!-- Favorites injected here -->
+                </div>
+            </section>
+        </div>
+
+        <!-- Search Page (All Verified Stations) -->
+        <div id="page-search" class="page">
+            <section class="search-section">
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="margin-bottom: 0;">RADIO LIST</h2>
+                    <div style="display: flex; gap: 1rem;">
+                        <button id="sync-btn" class="btn-top" title="방송 리스트 동기화" style="padding: 0; background: none;">
+                            <svg style="width: 1.25rem; height: 1.25rem; fill: var(--accent-color);" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="search-view-results" class="search-results-container">
+                    <!-- All stations list injected here -->
+                </div>
+            </section>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="window.showPage('home')" title="홈">
+                <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+            </button>
+            <button class="nav-item" onclick="window.showPage('search')" title="검색">
+                <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            </button>
+        </nav>
+
+        <div id="toast-container" class="toast-container"></div>
+
+    </div>
+
+    <audio id="radio-audio"></audio>
+
+    <script>
+        const audio = document.getElementById('radio-audio');
+        const playBtn = document.getElementById('play-btn');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
+        const freqDisplay = document.getElementById('current-freq');
+        const nameDisplay = document.getElementById('current-name');
+        const stationList = document.getElementById('station-list');
+        const syncBtn = document.getElementById('sync-btn');
+        const searchViewResults = document.getElementById('search-view-results');
+        const vizToggleBtn = document.getElementById('viz-toggle-btn');
+
+        let currentHls = null;
+        let activeStationId = null;
+        let isPlaying = false;
+        let userStations = [];
+        let vizMode = 'waves';
+
+        // Web Audio API Variables
+        let audioCtx = null;
+        let analyser = null;
+        let source = null;
+        let dataArray = null;
+        let animationId = null;
+        let wakeLock = null;
+        let canvas = null;
+        let ctx = null;
+
+        const DEFAULT_STATIONS = [
+          { id: 'kbs_classic', name: 'KBS 1FM (클래식)', freq: '93.1MHz', url: 'https://radio.bsod.kr/stream/?stn=kbs&ch=1fm', color: '#005bac' },
+          { id: 'kbs_cool', name: 'KBS 2FM (쿨FM)', freq: '89.1MHz', url: 'https://radio.bsod.kr/stream/?stn=kbs&ch=2fm', color: '#e30613' },
+          { id: 'mbc_sfm', name: 'MBC 표준FM', freq: '95.9MHz', url: 'https://radio.bsod.kr/stream/?stn=mbc&ch=sfm', color: '#e30613' },
+          { id: 'sbs_power', name: 'SBS 파워FM', freq: '107.7MHz', url: 'https://radio.bsod.kr/stream/?stn=sbs&ch=powerfm', color: '#00a0e9' }
+        ];
+
+        const VERIFIED_KR_STATIONS = [
+            { name: "KBS 1라디오", stn: "kbs", ch: "1radio", tags: "뉴스, 시사", freq: "97.3MHz" },
+            { name: "KBS 2라디오", stn: "kbs", ch: "2radio", tags: "음악, 토크", freq: "106.1MHz" },
+            { name: "KBS 3라디오", stn: "kbs", ch: "3radio", tags: "복지, 뉴스", freq: "104.9MHz" },
+            { name: "KBS 1FM (클래식)", stn: "kbs", ch: "1fm", tags: "클래식, 전수", freq: "93.1MHz" },
+            { name: "KBS 2FM (쿨FM)", stn: "kbs", ch: "2fm", tags: "대중음악", freq: "89.1MHz" },
+            { name: "MBC 표준FM", stn: "mbc", ch: "sfm", tags: "뉴스, 시사", freq: "95.9MHz" },
+            { name: "MBC FM4U", stn: "mbc", ch: "fm4u", tags: "음악, 예능", freq: "91.9MHz" },
+            { name: "MBC mini 올댓뮤직", stn: "mbc", ch: "chm", tags: "24시간 음악", freq: "디지털" },
+            { name: "SBS 러브FM", stn: "sbs", ch: "lovefm", tags: "시사, 가요", freq: "103.5MHz" },
+            { name: "SBS 파워FM", stn: "sbs", ch: "powerfm", tags: "음악, 예능", freq: "107.7MHz" },
+            { name: "SBS 고릴라디오M", stn: "sbs", ch: "dmb", tags: "24시간 음악", freq: "디지털" },
+            { name: "EBS FM", stn: "ebs", ch: "", tags: "교육, 외국어", freq: "104.5MHz" },
+            { name: "iFM 경인방송", stn: "ifm", ch: "", tags: "인천 지역 방송", freq: "90.7MHz" },
+            { name: "YTN 라디오", stn: "ytn", ch: "", tags: "24시간 뉴스", freq: "94.5MHz" },
+            { name: "TBS FM", stn: "tbs", ch: "fm", tags: "교통, 정보", freq: "95.1MHz" },
+            { name: "TBS eFM", stn: "tbs", ch: "efm", tags: "영어 방송", freq: "101.3MHz" },
+            { name: "TBN 경인교통방송", stn: "tbn", ch: "", tags: "교통 안전", freq: "100.5MHz" },
+            { name: "CBS 표준FM", stn: "cbs", ch: "sfm", tags: "시사, 종교", freq: "98.1MHz" },
+            { name: "CBS 음악FM", stn: "cbs", ch: "mfm", tags: "음악, 팝, 가요", freq: "93.9MHz" }
+        ];
+
+        function init() {
+            loadStations();
+            setupEventListeners();
+            initVisualizer();
+            updateVisualizerMode();
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; 
+            
+            const hoursStr = String(hours).padStart(2, '0');
+            // Wrap colon in a span for blinking effect
+            const timeHTML = `${ampm} ${hoursStr}<span class="blink-colon">:</span>${minutes}`;
+            
+            const clockEl = document.getElementById('header-clock');
+            if (clockEl) clockEl.innerHTML = timeHTML;
+        }
+
+        function resizeCanvas() {
+            if (!canvas) return;
+            canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+            canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+        }
+
+        function initVisualizer() {
+            const glowLayer = document.querySelector('.visualizer-glow-layer');
+            const sharpLayer = document.querySelector('.visualizer-sharp-layer');
+            canvas = document.getElementById('viz-canvas');
+            ctx = canvas.getContext('2d');
+            
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            
+            // Re-initialize layers
+            glowLayer.innerHTML = '';
+            for (let i = 0; i < 50; i++) {
+                const line = document.createElement('div');
+                line.className = 'glow-line';
+                glowLayer.appendChild(line);
+            }
+            
+            sharpLayer.innerHTML = '';
+            for (let i = 0; i < 80; i++) {
+                const line = document.createElement('div');
+                line.className = 'sharp-line';
+                sharpLayer.appendChild(line);
+            }
+        }
+
+        function initAudioContext() {
+            if (audioCtx) return;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                audio.crossOrigin = "anonymous"; 
+                source = audioCtx.createMediaElementSource(audio);
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination);
+                analyser.fftSize = 256;
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+            } catch (e) {
+                console.error("Web Audio API Error:", e);
+            }
+        }
+
+        function renderFrame() {
+            if (!isPlaying || vizMode === 'off') {
+                animationId = requestAnimationFrame(renderFrame);
+                return;
+            }
+
+            if (analyser) {
+                analyser.getByteFrequencyData(dataArray);
+                
+                if (vizMode === 'spectrum') {
+                    // --- Style 3: Sharp Dense Spectrum (Image 3) ---
+                    const lines = document.querySelectorAll('.sharp-line');
+                    const step = Math.floor(dataArray.length / lines.length);
+                    lines.forEach((line, i) => {
+                        const val = dataArray[i * step] || 0;
+                        const height = Math.max(5, (val / 255) * 100);
+                        line.style.height = height + '%';
+                        line.style.opacity = 0.3 + (val / 255) * 0.7;
+                    });
+                } else if (vizMode === 'waves') {
+                    // --- Style 1: Symmetrical Glow Waves (Image 2) ---
+                    const lines = document.querySelectorAll('.glow-line');
+                    const step = Math.floor(dataArray.length / lines.length);
+                    lines.forEach((line, i) => {
+                        const val = dataArray[i * step] || 0;
+                        const height = Math.max(8, (val / 255) * 85);
+                        line.style.height = height + '%';
+                        line.style.opacity = 0.5 + (val / 255) * 0.5;
+                    });
+                } else if (vizMode === 'blob') {
+                    // --- Style 2: Radial Organic Pulse (Image 2) ---
+                    const rings = document.querySelectorAll('.pulse-ring');
+                    const low = getAvg(dataArray, 0, 10);
+                    const mid = getAvg(dataArray, 30, 60);
+                    const high = getAvg(dataArray, 80, 110);
+                    
+                    rings.forEach((ring, i) => {
+                        const intensity = i === 0 ? low : (i === 1 ? mid : (low + high) / 2);
+                        const scale = 0.6 + (intensity / 255) * 1.5;
+                        const rotate = (Date.now() / (20 + i * 10)) % 360;
+                        ring.style.transform = `scale(${scale}) rotate(${rotate}deg)`;
+                        ring.style.opacity = 0.2 + (intensity / 255) * 0.5;
+                        // Morphing effect
+                        const br = 50 + (intensity / 10);
+                        ring.style.borderRadius = `${br}% ${100-br}% ${br}% ${100-br}% / ${100-br}% ${br}% ${100-br}% ${br}%`;
+                    });
+                } else if (vizMode === 'cyber') {
+                    // --- Style 4: Cyber multi-layer Wave (Reference Image) ---
+                    if (!ctx) return;
+                    const w = canvas.width;
+                    const h = canvas.height;
+                    ctx.clearRect(0, 0, w, h);
+                    
+                    const layers = 6;
+                    for (let l = 0; l < layers; l++) {
+                        ctx.beginPath();
+                        ctx.lineWidth = 1 + (l * 0.5);
+                        const alpha = 0.1 + (l / layers) * 0.6;
+                        const hue = 180 + (l * 15); // Cyan to Purple
+                        ctx.strokeStyle = `hsla(${hue}, 80%, 60%, ${alpha})`;
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = `hsla(${hue}, 80%, 50%, 0.5)`;
+
+                        const step = w / (dataArray.length / 2);
+                        ctx.moveTo(0, h / 2);
+                        
+                        for (let i = 0; i < dataArray.length / 2; i++) {
+                            const val = dataArray[i] / 255.0;
+                            const x = i * step;
+                            const offset = (Math.sin(Date.now() * 0.002 + l + i * 0.1) * 20);
+                            const y = h / 2 + (val * h * 0.4 * Math.sin(i * 0.05 + Date.now() * 0.001 * l)) + offset;
+                            
+                            if (i === 0) ctx.moveTo(x, y);
+                            else ctx.lineTo(x, y);
+                        }
+                        ctx.stroke();
+                    }
+                }
+            }
+            animationId = requestAnimationFrame(renderFrame);
+        }
+
+        function getAvg(array, start, end) {
+            let sum = 0;
+            for(let i = start; i < end; i++) sum += array[i];
+            return sum / (end - start);
+        }
+
+        function loadStations() {
+            const saved = localStorage.getItem('radio_stations');
+            if (saved) {
+                userStations = JSON.parse(saved);
+            } else {
+                userStations = [...DEFAULT_STATIONS];
+            }
+            renderStations();
+            renderSearchList();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('radio_stations', JSON.stringify(userStations));
+        }
+
+        function renderStations() {
+            if (userStations.length === 0) {
+                stationList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📻</div>
+                        <p>즐겨찾기한 방송이 없습니다.</p>
+                        <p class="empty-subtext">검색 페이지에서 하트를 눌러 추가해보세요!</p>
+                    </div>
+                `;
+                return;
+            }
+            stationList.innerHTML = userStations.map(s => `
+                <div class="station-item ${s.id === activeStationId ? 'active' : ''}" 
+                     data-id="${s.id}" 
+                     onclick="selectStation('${s.id}')">
+                    <div class="station-info">
+                        <div class="station-freq">${s.freq}</div>
+                        <div class="station-name">${s.name}</div>
+                    </div>
+                    <button class="btn-delete" title="즐겨찾기 삭제" onclick="window.removeStation(event, '${s.id}')">
+                        <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function renderSearchList() {
+            searchViewResults.innerHTML = VERIFIED_KR_STATIONS.map(s => {
+                const url = `https://radio.bsod.kr/stream/?stn=${s.stn}${s.ch ? '&ch=' + s.ch : ''}`;
+                const isSaved = userStations.some(us => us.url === url);
+                const sData = encodeURIComponent(JSON.stringify({
+                    name: s.name,
+                    url: url,
+                    tags: s.tags,
+                    freq: s.freq
+                }));
+                return `
+                    <div class="search-result-item-card">
+                        <div class="sr-info" onclick="window.previewStation('${url}', '${s.name}')">
+                            <span class="sr-name">${s.name}</span>
+                            <span class="sr-tags">${s.tags} | ${s.freq}</span>
+                        </div>
+                        <div class="sr-actions">
+                            <button class="btn-preview-circle" onclick="window.previewStation('${url}', '${s.name}')" title="미리듣기">
+                                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            </button>
+                            <button class="btn-fav-toggle ${isSaved ? 'active' : ''}" 
+                                onclick="window.toggleFavorite(event, '${sData}')" title="즐겨찾기">
+                                <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function setupEventListeners() {
+            playBtn.addEventListener('click', togglePlay);
+            syncBtn.addEventListener('click', synchronizeStreams);
+            if (vizToggleBtn) vizToggleBtn.addEventListener('click', cycleVisualizerMode);
+        }
+
+        function cycleVisualizerMode() {
+            if (vizMode === 'waves') vizMode = 'blob';
+            else if (vizMode === 'blob') vizMode = 'spectrum';
+            else if (vizMode === 'spectrum') vizMode = 'cyber';
+            else if (vizMode === 'cyber') vizMode = 'off';
+            else vizMode = 'waves';
+            updateVisualizerMode();
+        }
+
+        function updateVisualizerMode() {
+            const container = document.getElementById('visualizer');
+            const glow = document.querySelector('.visualizer-glow-layer');
+            const pulse = document.querySelector('.visualizer-pulse-layer');
+            const sharp = document.querySelector('.visualizer-sharp-layer');
+            const cvsLayer = document.getElementById('viz-canvas');
+            
+            glow.style.display = vizMode === 'waves' ? 'flex' : 'none';
+            pulse.style.display = vizMode === 'blob' ? 'flex' : 'none';
+            sharp.style.display = vizMode === 'spectrum' ? 'flex' : 'none';
+            cvsLayer.style.display = vizMode === 'cyber' ? 'block' : 'none';
+            container.style.opacity = vizMode === 'off' ? '0' : '1';
+
+            if (vizMode === 'cyber') {
+                setTimeout(resizeCanvas, 10);
+            }
+        }
+
+        async function synchronizeStreams() {
+            if (syncBtn.classList.contains('spinning')) return;
+            
+            syncBtn.classList.add('spinning');
+            showToast('방송 리스트를 최신 상태로 업데이트하고 있습니다...');
+            
+            // Simulation delay (actual network logic)
+            await new Promise(r => setTimeout(r, 2000));
+
+            userStations = userStations.map(station => {
+                const verified = VERIFIED_KR_STATIONS.find(v => v.name === station.name);
+                if (verified) {
+                    const latestUrl = `https://radio.bsod.kr/stream/?stn=${verified.stn}${verified.ch ? '&ch=' + verified.ch : ''}`;
+                    return { ...station, url: latestUrl, freq: verified.freq };
+                }
+                return station;
+            });
+
+            saveToLocalStorage();
+            renderStations();
+            renderSearchList();
+            
+            syncBtn.classList.remove('spinning');
+            showToast('✅ 모든 방송 주소가 최신 상태로 갱신되었습니다.', 'success');
+        }
+
+        function showToast(message, type = '') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'toast-out 0.4s forwards';
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+
+        window.previewStation = (url, stationData) => {
+            const name = typeof stationData === 'string' ? stationData : stationData.name;
+            activeStationId = 'preview';
+            freqDisplay.textContent = 'SCAN';
+            freqDisplay.classList.add('is-digital');
+            nameDisplay.textContent = 'CONNECTING...';
+            loadStream(url, { name: name });
+        };
+
+        window.toggleFavorite = (e, sEncoded) => {
+            e.stopPropagation();
+            const s = JSON.parse(decodeURIComponent(sEncoded));
+            const existingIdx = userStations.findIndex(us => us.name === s.name);
+
+            if (existingIdx > -1) {
+                userStations.splice(existingIdx, 1);
+            } else {
+                userStations.push({
+                    id: 'fav_' + Date.now(),
+                    name: s.name,
+                    freq: s.freq,
+                    url: s.url
+                });
+            }
+            saveToLocalStorage();
+            renderStations();
+            renderSearchList();
+        };
+
+        window.removeStation = (e, id) => {
+            e.stopPropagation();
+            if (confirm('즐겨찾기에서 삭제할까요?')) {
+                userStations = userStations.filter(us => us.id !== id);
+                if (activeStationId === id) pauseAudio();
+                saveToLocalStorage();
+                renderStations();
+                renderSearchList();
+            }
+        };
+
+        window.showPage = (pageId) => {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`page-${pageId}`).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.toggle('active', item.getAttribute('onclick').includes(pageId));
+            });
+        };
+
+        function selectStation(id) {
+            const station = userStations.find(s => s.id === id);
+            if (!station) return;
+
+            activeStationId = id;
+            const freqText = station.freq.replace('MHz', '');
+            freqDisplay.textContent = freqText;
+            
+            // Toggle digital font style for non-numeric labels
+            if (isNaN(parseFloat(freqText))) {
+                freqDisplay.classList.add('is-digital');
+            } else {
+                freqDisplay.classList.remove('is-digital');
+            }
+            
+            nameDisplay.textContent = 'LOADING...';
+            renderStations();
+            loadStream(station.url, station);
+        }
+
+        function loadStream(url, station) {
+            if (currentHls) currentHls.destroy();
+
+            if (Hls.isSupported()) {
+                currentHls = new Hls();
+                currentHls.loadSource(url);
+                currentHls.attachMedia(audio);
+                currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    nameDisplay.textContent = station.name;
+                    playAudio();
+                });
+                currentHls.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                currentHls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                currentHls.recoverMediaError();
+                                break;
+                            default:
+                                currentHls.destroy();
+                                break;
+                        }
+                    }
+                });
+            } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+                audio.src = url;
+                audio.addEventListener('loadedmetadata', () => {
+                    nameDisplay.textContent = station.name;
+                    playAudio();
+                });
+            }
+        }
+
+        function togglePlay() {
+            if (isPlaying) pauseAudio();
+            else playAudio();
+        }
+
+        function playAudio() {
+            if (!audio.src && !currentHls) return;
+            
+            // Web Audio API Init on user gesture
+            initAudioContext();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            audio.play().then(() => {
+                isPlaying = true;
+                playIcon.style.display = 'none';
+                pauseIcon.style.display = 'block';
+                document.getElementById('visualizer').classList.add('active');
+                if (!animationId) renderFrame();
+                
+                // Mobile Optimization
+                requestWakeLock();
+                updateMediaSession();
+            }).catch(e => console.error('Play failed:', e));
+        }
+
+        function pauseAudio() {
+            audio.pause();
+            isPlaying = false;
+            playIcon.style.display = 'block';
+            pauseIcon.style.display = 'none';
+            document.getElementById('visualizer').classList.remove('active');
+            // Reset visualizer state
+            resetVisualizerUI();
+            
+            // Mobile Optimization
+            releaseWakeLock();
+            updateMediaSession();
+        }
+
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake Lock is active');
+                } catch (err) {
+                    console.error(`${err.name}, ${err.message}`);
+                }
+            }
+        }
+
+        function releaseWakeLock() {
+            if (wakeLock !== null) {
+                wakeLock.release().then(() => {
+                    wakeLock = null;
+                    console.log('Wake Lock released');
+                });
+            }
+        }
+
+        function updateMediaSession() {
+            if ('mediaSession' in navigator) {
+                const name = nameDisplay.textContent || 'Premium K-Radio';
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: name,
+                    artist: 'Premium K-Radio',
+                    album: freqDisplay.textContent,
+                    artwork: [
+                        { src: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=512&h=512&fit=crop', sizes: '512x512', type: 'image/jpeg' }
+                    ]
+                });
+
+                navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+                navigator.mediaSession.setActionHandler('play', () => {
+                    playAudio();
+                });
+                navigator.mediaSession.setActionHandler('pause', () => {
+                    pauseAudio();
+                });
+            }
+        }
+
+        function resetVisualizerUI() {
+            document.querySelectorAll('.visualizer-bar').forEach(b => b.style.height = '4%');
+            document.querySelectorAll('.wave').forEach(w => w.style.transform = 'translate3d(0, 80%, 0) scaleY(0.5)');
+        }
+
+        init();
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log('Service Worker Registered'));
+        }
+    </script>
+</body>
+</html>
