@@ -900,34 +900,15 @@ header {
     padding: 0; /* Fully expanded to edges */
 }
 
-/* Mode 2: Radial Organic Pulse */
-.visualizer-pulse-layer {
+/* Mode 2: Circular Organic Ring (Canvas based) */
+.visualizer-ring-layer {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
+    pointer-events: none;
 }
-
-.pulse-ring {
-    position: absolute;
-    width: 300px;
-    height: 300px;
-    border: 2px solid var(--accent-color);
-    box-shadow: 0 0 30px var(--accent-color);
-    opacity: 0.3;
-    filter: blur(2px);
-    will-change: transform, border-radius, opacity;
-}
-
-.pulse-ring:nth-child(1) { border-color: #00f2ff; width: 280px; height: 280px; }
-.pulse-ring:nth-child(2) { border-color: #7000ff; width: 340px; height: 340px; }
-.pulse-ring:nth-child(3) { border-color: #ff00c8; width: 240px; height: 240px; }
 
 /* Glow Styles kept in Glow Line */
 
