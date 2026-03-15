@@ -791,7 +791,7 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--text-dim);
+  color: rgba(255, 255, 255, 0.4); /* Dim white for inactive */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -814,7 +814,7 @@ body {
 }
 
 .nav-item.active {
-  color: var(--brand-primary);
+  color: #ffffff; /* Pure white for active */
 }
 
 .nav-item.active svg {
@@ -823,7 +823,7 @@ body {
 }
 
 .nav-item.active svg {
-  fill: var(--brand-primary);
+  fill: #ffffff;
 }
 
 /* --- Major Overhaul Additional Styles --- */
