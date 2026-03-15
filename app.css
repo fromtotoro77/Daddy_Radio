@@ -462,7 +462,7 @@ body {
 }
 
 .toast.success {
-  border-left: 3px solid var(--accent-color);
+  border-left: 3px solid var(--brand-primary);
 }
 
 @keyframes toast-in {
@@ -478,7 +478,7 @@ body {
 .station-freq {
   font-size: 0.75rem;
   font-weight: 700;
-  color: var(--accent-color);
+  color: var(--brand-primary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -534,11 +534,11 @@ body {
 }
 
 .custom-url-input-group input:focus {
-  border-color: var(--accent-color);
+  border-color: var(--brand-primary);
 }
 
 .custom-url-input-group button {
-  background: var(--accent-color);
+  background: var(--brand-primary);
   color: #0f172a;
   border: none;
   border-radius: 0.75rem;
@@ -630,7 +630,7 @@ body {
 
 
 .btn-preview-circle:hover {
-  background: var(--accent-color);
+  background: var(--brand-primary);
   transform: scale(1.1);
   color: #0f172a;
 }
@@ -684,7 +684,7 @@ body {
 
 .modal-header h2 {
   font-size: 1.2rem;
-  color: var(--accent-color);
+  color: var(--brand-primary);
 }
 
 .close-modal {
@@ -704,7 +704,7 @@ body {
 /* Search View */
 .btn-primary-action {
   width: 100%;
-  background: var(--accent-color);
+  background: var(--brand-primary);
   color: #0f172a;
   border: none;
   border-radius: 1.25rem;
@@ -814,7 +814,7 @@ body {
 }
 
 .nav-item.active {
-  color: var(--accent-color);
+  color: var(--brand-primary);
 }
 
 .nav-item.active svg {
@@ -823,7 +823,7 @@ body {
 }
 
 .nav-item.active svg {
-  fill: var(--accent-color);
+  fill: var(--brand-primary);
 }
 
 /* --- Major Overhaul Additional Styles --- */
@@ -853,7 +853,7 @@ body {
     width: 1rem;
     height: 1rem;
     border: 2px solid rgba(255,255,255,0.2);
-    border-top-color: var(--accent-color);
+    border-top-color: var(--brand-primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     vertical-align: middle;
@@ -889,7 +889,7 @@ body {
 .btn-viz-toggle svg {
     width: 16px;
     height: 16px;
-    fill: var(--accent-color);
+    fill: var(--brand-primary);
     opacity: 0.6;
 }
 
@@ -933,10 +933,10 @@ main {
 
 .glow-line {
     width: 4px;
-    background: linear-gradient(to bottom, #00f2ff, var(--accent-color), #00f2ff);
+    background: linear-gradient(to bottom, #00f2ff, var(--brand-primary), #00f2ff);
     border-radius: 20px; /* Full rounded for symmetrical look */
     will-change: height, opacity;
-    box-shadow: 0 0 15px var(--accent-color);
+    box-shadow: 0 0 15px var(--brand-primary);
     opacity: 0.8;
 }
 
@@ -968,7 +968,7 @@ main {
 /* Mode 3: Sharp Dense Spectrum (The Bars you liked) */
 .sharp-line {
     width: 4px;
-    background: linear-gradient(to top, var(--accent-color), #818cf8, #c084fc);
+    background: linear-gradient(to top, var(--brand-primary), #818cf8, #c084fc);
     border-radius: 4px 4px 0 0;
     will-change: height, opacity;
     box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);

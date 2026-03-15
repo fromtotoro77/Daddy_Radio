@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>다가치 라디오 v2.0 - 프리미엄 비주얼 에디션</title>
+    <title>아빠 라디오 v2.0 - 우리가족 </title>
     <link rel="manifest" href="manifest.json?v=4">
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
@@ -56,10 +56,10 @@
                 <div class="flex justify-between w-full items-center mb-6">
                     <div class="logo">
                         <span class="text-2xl font-black tracking-tighter text-white">Daddy Radio <small
-                                class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v2.0.0</small></span>
+                                class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v2.1.0</small></span>
                     </div>
                     <div id="header-clock"
-                        class="text-3xl font-mono text-brand-primary opacity-90 uppercase tracking-widest">PM 00:00
+                        class="text-2xl font-mono text-brand-primary opacity-90 uppercase tracking-widest">PM 00:00
                     </div>
                 </div>
 
@@ -530,9 +530,9 @@
                         <div class="flex items-center gap-1">
                             <button class="p-2 ${isSaved ? 'text-brand-accent' : 'text-slate-500'} hover:scale-110 active:scale-95 transition-all" onclick="window.toggleFavorite(event, '${sData}')" title="즐겨찾기">
                                 ${isSaved ?
-                                    `<svg class="h-5 w-5 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>` :
-                                    `<svg class="h-5 w-5 fill-none stroke-current" stroke-width="2" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`
-                                }
+                        `<svg class="h-5 w-5 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>` :
+                        `<svg class="h-5 w-5 fill-none stroke-current" stroke-width="2" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`
+                    }
                             </button>
                         </div>
                     </div>
@@ -733,7 +733,7 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js?v=30').then(() => console.log('SW Registered'));
+            navigator.serviceWorker.register('sw.js?v=31').then(() => console.log('SW Registered'));
         }
     </script>
 </body>

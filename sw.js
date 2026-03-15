@@ -1,4 +1,4 @@
-const CACHE_NAME = 'daddy-radio-v30';
+const CACHE_NAME = 'daddy-radio-v31';
 const ASSETS = [
   './',
   './index.html',
