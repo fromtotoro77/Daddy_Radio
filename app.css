@@ -567,6 +567,17 @@ body {
   letter-spacing: 0.05em;
 }
 
+/* 2차 후보(공식 폴백)가 있는 방송 표시용 빨간 점 */
+.fallback-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.75);
+  align-self: center;
+}
+
 .station-name {
   font-size: 1.05rem;
   font-weight: 600;

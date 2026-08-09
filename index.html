@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>아빠 라디오 v2.4.0 - 우리가족 </title>
-    <link rel="manifest" href="manifest.json?v=2.4.0">
+    <title>아빠 라디오 v2.5.0 - 우리가족 </title>
+    <link rel="manifest" href="manifest.json?v=2.5.0">
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -51,7 +51,7 @@
             <div class="flex justify-between w-full items-center">
                 <div class="logo">
                     <span class="text-2xl font-black tracking-tighter text-white">Daddy Radio <small
-                            class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v2.4.0</small></span>
+                            class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v2.5.0</small></span>
                 </div>
                 <div id="header-clock"
                     class="text-2xl font-mono text-brand-primary opacity-90 uppercase tracking-widest">PM 00:00
@@ -145,6 +145,7 @@
     <script>
         // --- 전역 설정 및 상태 변수 ---
         const audio = document.getElementById('radio-audio'); // 오디오 엘리먼트
+        audio.crossOrigin = "anonymous"; // CORS: 시각화(Web Audio) + 스트림 로드 전에 미리 설정
         const playBtn = document.getElementById('play-btn');  // 재생 버튼
         const playIcon = document.getElementById('play-icon');
         const pauseIcon = document.getElementById('pause-icon');
@@ -159,8 +160,7 @@
         let currentHls = null;      // 현재 HLS.js 인스턴스
         let activeStationId = null; // 현재 활성화된(듣고 있는) 방송 ID
         let isPlaying = false;      // 재생 상태 플래그
-        let lastLoadedUrl = null;   // stall 시 재로드용
-        let lastLoadedStation = null;
+        let lastLoadedStation = null; // stall/재로드 시 현재 방송 재시도용
         let stallTimer = null;      // 5초 stall 감지 타이머
         const STALL_TIMEOUT_MS = 5000;
         let userStations = [];      // 사용자 즐겨찾기 방송 목록
@@ -557,6 +557,7 @@
             stationList.innerHTML = userStations.map(s => `
                 <div id="item-${s.id}" class="station-card ${s.id === activeStationId ? 'active' : ''}" onclick="selectStation('${s.id}')">
                     <div class="station-badge">${s.freq.replace('MHz', '')}</div>
+                    ${hasFallback(s.url) ? '<span class="fallback-dot" title="대체 주소 있음 (연결 실패 시 자동 전환)"></span>' : ''}
                     <div class="flex-grow min-w-0">
                         <h3 class="font-semibold text-slate-100 truncate">${s.name}</h3>
                         <p class="text-[10px] text-slate-400 uppercase tracking-tighter truncate">Favorite Station</p>
@@ -580,6 +581,7 @@
                 return `
                     <div class="station-card" onclick="window.previewStation('${url}', '${s.name}', '${s.freq}')">
                         <div class="station-badge">${freqText}</div>
+                        ${hasFallback(url) ? '<span class="fallback-dot" title="대체 주소 있음 (연결 실패 시 자동 전환)"></span>' : ''}
                         <div class="flex-grow min-w-0">
                             <h3 class="font-semibold text-slate-100 truncate">${s.name}</h3>
                             <p class="text-[10px] text-slate-400 uppercase tracking-tighter truncate">${s.tags}</p>
@@ -676,7 +678,7 @@
             freqDisplay.textContent = station.freq.replace('MHz', '') || '--.-';
             nameDisplay.textContent = 'CONNECTING...';
             renderStations();
-            loadStream(station.url, station);
+            loadStream(station);
         }
 
         // 재시도용 cache-buster: 매번 새로운 signed token을 받도록 URL에 timestamp 추가
@@ -691,11 +693,11 @@
         }
         function armStallTimer() {
             clearStallTimer();
-            if (!isPlaying || !lastLoadedUrl) return;
+            if (!isPlaying || !lastLoadedStation) return;
             stallTimer = setTimeout(() => {
                 if (!isPlaying) return;
-                // 5초간 재생 재개 안 됨 → 스트림 재로드
-                loadStream(lastLoadedUrl, lastLoadedStation, 0, true);
+                // 5초간 재생 재개 안 됨 → 1차 소스부터 다시 시도(비고정 폴백)
+                loadStream(lastLoadedStation, 0, true);
             }, STALL_TIMEOUT_MS);
         }
         audio.addEventListener('waiting', armStallTimer);
@@ -703,72 +705,154 @@
         audio.addEventListener('playing', clearStallTimer);
         audio.addEventListener('pause', clearStallTimer);
 
-        // HLS 스트림 로드 및 재생 준비
-        // - retryCount: 재시도 카운터 (수동/자동 통합)
-        // - isStallReload: stall로 인한 재로드는 사용자에게 조용히 처리
-        function loadStream(url, station, retryCount = 0, isStallReload = false) {
-            const MAX_RETRIES = 4;
+        // ─── 다중 소스 폴백(failover) ──────────────────────────────────
+        // true면 방송사 공식 소스를 먼저 시도(즉시 재생), bsod.kr 프록시를 폴백으로.
+        // false면 기존처럼 bsod.kr 프록시를 먼저, 실패 시 공식 소스로 폴백.
+        const PREFER_OFFICIAL_FIRST = false;
+
+        // bsod.kr URL의 stn/ch → 방송사 공식 소스(브라우저 직접 재생, CORS 허용 확인됨)
+        // type: 'static'(정적 m3u8) | 'kbs'(JSON API) | 'sbs'(텍스트 API)
+        const STREAM_FALLBACKS = {
+            'kbs|1fm':     [{ type: 'kbs', code: 24 }],
+            'kbs|2fm':     [{ type: 'kbs', code: 25 }],
+            'kbs|1radio':  [{ type: 'kbs', code: 21 }],
+            'kbs|2radio':  [{ type: 'kbs', code: 22 }],
+            'kbs|3radio':  [{ type: 'kbs', code: 23 }],
+            'sbs|powerfm': [{ type: 'sbs', dev: 'powerpc', ch: 'powerfm' }],
+            'sbs|lovefm':  [{ type: 'sbs', dev: 'lovepc',  ch: 'lovefm' }],
+            'cbs|mfm':     [{ type: 'static', url: 'https://m-aac.cbs.co.kr/mweb_cbs939/_definst_/cbs939.stream/playlist.m3u8' }],
+            'cbs|sfm':     [{ type: 'static', url: 'https://m-aac.cbs.co.kr/mweb_cbs981/_definst_/cbs981.stream/playlist.m3u8' }],
+            'ebs|':        [{ type: 'static', url: 'https://ebsonair.ebs.co.kr/fmradiofamilypc/familypc1m/playlist.m3u8' }],
+            'ytn|':        [{ type: 'static', url: 'https://radiolive.ytn.co.kr/radio/_definst_/20211118_fmlive/playlist.m3u8' }],
+            'ifm|':        [{ type: 'static', url: 'https://stream.ifm.kr/live/aod1/playlist.m3u8' }]
+            // MBC는 resolve API가 CORS를 안 줘서 브라우저 직접 폴백 불가 → 프록시(bsod.kr)만 사용
+        };
+
+        // bsod.kr URL에서 stn/ch 파라미터 추출
+        function parseStnCh(url) {
+            try {
+                const u = new URL(url, location.href);
+                return { stn: u.searchParams.get('stn') || '', ch: u.searchParams.get('ch') || '' };
+            } catch (e) { return null; }
+        }
+
+        // 이 방송에 2차 후보(공식 폴백)가 있는지 여부 → 목록에 빨간 점 표시용
+        function hasFallback(url) {
+            const p = parseStnCh(url);
+            if (!p) return false;
+            return !!(STREAM_FALLBACKS[`${p.stn}|${p.ch}`] || STREAM_FALLBACKS[`${p.stn}|`]);
+        }
+
+        // 방송국에 대한 우선순위 소스 목록 구성: [프록시(1차), ...공식 폴백]
+        function buildSources(station) {
+            const proxy = { type: 'proxy', url: station.url };
+            let fb = [];
+            const p = parseStnCh(station.url);
+            if (p) fb = STREAM_FALLBACKS[`${p.stn}|${p.ch}`] || STREAM_FALLBACKS[`${p.stn}|`] || [];
+            return PREFER_OFFICIAL_FIRST ? [...fb, proxy] : [proxy, ...fb];
+        }
+
+        // 소스 하나를 실제 재생 가능한 m3u8 URL로 해석(필요 시 API fetch)
+        async function resolveSource(src) {
+            if (src.type === 'proxy' || src.type === 'static') return src.url;
+            if (src.type === 'kbs') {
+                const r = await fetch(`https://cfpwwwapi.kbs.co.kr/api/v1/landing/live/channel_code/${src.code}`, { cache: 'no-store' });
+                const j = await r.json();
+                const u = j && j.channel_item && j.channel_item[0] && j.channel_item[0].service_url;
+                if (!u) throw new Error('KBS resolve 실패');
+                return u;
+            }
+            if (src.type === 'sbs') {
+                const r = await fetch(`https://apis.sbs.co.kr/play-api/1.0/livestream/${src.dev}/${src.ch}?protocol=hls&ssl=Y`, { cache: 'no-store' });
+                const t = (await r.text()).trim();
+                if (!/^https?:\/\//.test(t)) throw new Error('SBS resolve 실패');
+                return t;
+            }
+            throw new Error('알 수 없는 소스 타입');
+        }
+
+        // HLS 스트림 로드 (소스 목록을 순서대로 시도, 실패 시 자동 폴백)
+        // - sourceIndex: 현재 시도 중인 소스 인덱스
+        // - isReload: 사용자 재로드/조용한 재로드 여부
+        let loadToken = 0; // 겹치는 로드 요청 간 경쟁 상태 방지
+        async function loadStream(station, sourceIndex = 0, isReload = false) {
+            const myToken = ++loadToken;
             clearStallTimer();
-            lastLoadedUrl = url;
             lastLoadedStation = station;
-            // 재로드 버튼 표시 (한 번 로드 시도한 이후로 계속 보임)
             if (reloadBtn) reloadBtn.style.display = '';
 
             if (currentHls) { try { currentHls.destroy(); } catch (e) {} currentHls = null; }
 
-            // 재시도이거나 stall 재로드일 때는 cache-buster로 fresh 토큰 요청
-            const effectiveUrl = (retryCount > 0 || isStallReload) ? withCacheBuster(url) : url;
+            const sources = buildSources(station);
 
-            const scheduleRetry = () => {
-                if (retryCount >= MAX_RETRIES) {
-                    nameDisplay.textContent = station.name;
-                    if (reloadBtn) reloadBtn.classList.add('attention'); // 재생 실패 알림 pulse
-                    showToast('❌ 스트림 연결 실패', '', '다시 시도', reloadStream);
-                    return;
-                }
-                const attempt = retryCount + 1;
-                if (!isStallReload) showToast(`재연결 중… (${attempt}/${MAX_RETRIES})`);
-                // 지수 백오프: 800, 1600, 3200, 6400ms
-                const delay = 800 * Math.pow(2, retryCount);
-                setTimeout(() => loadStream(url, station, attempt, isStallReload), delay);
+            // 모든 소스 소진 → 최종 실패
+            if (sourceIndex >= sources.length) {
+                nameDisplay.textContent = station.name || '';
+                if (reloadBtn) reloadBtn.classList.add('attention'); // 재생 실패 알림 pulse
+                showToast('❌ 스트림 연결 실패', '', '다시 시도', reloadStream);
+                return;
+            }
+
+            const src = sources[sourceIndex];
+            const goNext = () => { if (myToken === loadToken) loadStream(station, sourceIndex + 1, isReload); };
+
+            // 폴백(2차 이상)으로 넘어갈 때만 조용한 안내
+            if (sourceIndex > 0 && !isReload) showToast('대체 주소로 연결 중…');
+
+            // 소스 해석(API 호출 등). 실패하면 다음 소스로.
+            let url;
+            try {
+                url = await resolveSource(src);
+            } catch (e) {
+                goNext();
+                return;
+            }
+            if (myToken !== loadToken) return; // 더 최신 로드가 시작됨 → 폐기
+
+            // 프록시/정적 소스는 재로드 시 cache-buster로 fresh 요청 (KBS/SBS는 API가 매번 새 토큰 발급)
+            const finalUrl = (isReload && (src.type === 'proxy' || src.type === 'static')) ? withCacheBuster(url) : url;
+
+            const onReady = () => {
+                if (myToken !== loadToken) return;
+                nameDisplay.textContent = station.name || '';
+                if (reloadBtn) reloadBtn.classList.remove('attention');
+                playAudio();
             };
 
             if (Hls.isSupported()) {
-                // HLS.js 재시도 옵션 강화 — 프록시 순간 부하 / CDN 스위칭 극복
+                // 매니페스트 로드는 빠르게 실패시켜(폴백을 위해), 세그먼트는 넉넉히 재시도(재생 중 끊김 대비)
                 currentHls = new Hls({
-                    manifestLoadingMaxRetry: 4,
+                    manifestLoadingMaxRetry: 1,
                     manifestLoadingRetryDelay: 500,
-                    manifestLoadingMaxRetryTimeout: 8000,
-                    levelLoadingMaxRetry: 4,
+                    levelLoadingMaxRetry: 2,
                     levelLoadingRetryDelay: 500,
-                    levelLoadingMaxRetryTimeout: 8000,
                     fragLoadingMaxRetry: 6,
                     fragLoadingRetryDelay: 500,
                     fragLoadingMaxRetryTimeout: 8000,
                     maxBufferHole: 0.5,
                     nudgeMaxRetry: 8
                 });
-                currentHls.loadSource(effectiveUrl);
+                currentHls.loadSource(finalUrl);
                 currentHls.attachMedia(audio);
-                currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    nameDisplay.textContent = station.name;
-                    playAudio();
-                });
+                currentHls.on(Hls.Events.MANIFEST_PARSED, onReady);
                 currentHls.on(Hls.Events.ERROR, (evt, data) => {
-                    if (!data.fatal) return;
-                    // 미디어 오류는 HLS.js 내부 복구를 먼저 시도
-                    if (data.type === Hls.ErrorTypes.MEDIA_ERROR && retryCount === 0) {
+                    if (!data.fatal || myToken !== loadToken) return;
+                    // 미디어 오류는 HLS.js 내부 복구를 먼저 시도(같은 소스 유지)
+                    if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
                         try { currentHls.recoverMediaError(); return; } catch (e) {}
                     }
                     try { currentHls.destroy(); } catch (e) {}
-                    scheduleRetry();
+                    goNext(); // 네트워크/매니페스트 오류 → 다음 소스로 폴백
                 });
             } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-                audio.src = effectiveUrl;
-                const onOk = () => { audio.removeEventListener('error', onErr); nameDisplay.textContent = station.name; playAudio(); };
-                const onErr = () => { audio.removeEventListener('loadedmetadata', onOk); scheduleRetry(); };
+                // iOS Safari 등 네이티브 HLS 경로
+                audio.src = finalUrl;
+                const onOk = () => { audio.removeEventListener('error', onErr); onReady(); };
+                const onErr = () => { audio.removeEventListener('loadedmetadata', onOk); if (myToken === loadToken) goNext(); };
                 audio.addEventListener('loadedmetadata', onOk, { once: true });
                 audio.addEventListener('error', onErr, { once: true });
+            } else {
+                goNext();
             }
         }
 
@@ -849,14 +933,14 @@
 
         // 사용자가 재로드 버튼을 눌렀을 때: 즉시 fresh 토큰으로 다시 스트림 로드
         function reloadStream() {
-            if (!lastLoadedUrl || !lastLoadedStation) return;
+            if (!lastLoadedStation) return;
             if (reloadBtn) {
                 reloadBtn.classList.remove('attention');
                 reloadBtn.classList.add('spinning');
             }
             // 스핀 애니메이션을 잠깐 보여주기 위해 40ms 지연
             setTimeout(() => {
-                loadStream(lastLoadedUrl, lastLoadedStation, 0, true);
+                loadStream(lastLoadedStation, 0, true);
                 setTimeout(() => { if (reloadBtn) reloadBtn.classList.remove('spinning'); }, 900);
             }, 40);
         }
@@ -906,7 +990,7 @@
             activeStationId = 'preview';
             freqDisplay.textContent = freq ? freq.replace('MHz', '') : '--.-';
             nameDisplay.textContent = 'CONNECTING...';
-            loadStream(url, { name });
+            loadStream({ name, url });
         };
 
         // 즐겨찾기 추가/삭제 토글
@@ -935,7 +1019,7 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js?v=2.4.0').then(() => console.log('SW Registered'));
+            navigator.serviceWorker.register('sw.js?v=2.5.0').then(() => console.log('SW Registered'));
         }
     </script>
 </body>
