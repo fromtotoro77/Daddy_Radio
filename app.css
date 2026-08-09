@@ -1,11 +1,11 @@
 /* 디자인 시스템: 색상 및 폰트 변수 정의 */
 :root {
-  --primary-bg: #0f172a;        /* 메인 배경색 (다크 슬레이트) */
-  --surface-bg: #1e293b;        /* 카드 및 레이어 배경색 */
-  --brand-primary: #6366f1;     /* 브랜드 메인 포인트 컬러 (인디고) */
-  --brand-accent: #ff748c;      /* 강조/즐겨찾기 컬러 (핑크-레드) */
-  --text-main: #f8fafc;         /* 기본 텍스트 색상 */
-  --text-dim: #94a3b8;          /* 보조/비활성 텍스트 색상 */
+  --primary-bg: #0c0c0e;        /* Soft Mono: near-black 메인 배경 */
+  --surface-bg: #17171a;        /* Soft Mono: 카드/레이어 표면 */
+  --brand-primary: #d4d4d8;     /* Soft Mono: near-white 포인트(라이트 징크) */
+  --brand-accent: #f43f5e;      /* Soft Mono: 단일 레드 강조(라이브/즐겨찾기) */
+  --text-main: #f4f4f5;         /* 기본 텍스트 색상 */
+  --text-dim: #8b8b90;          /* 보조/비활성 텍스트 색상 */
   --font-main: 'Pretendard', 'Inter', -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
@@ -372,6 +372,7 @@ header {
 
 /* 방송사 라벨 뱃지 스타일 */
 .station-badge {
+  position: relative; /* 안쪽 상단에 빨간 점(폴백 표시)을 얹기 위한 기준 */
   flex-shrink: 0;
   width: 3.5rem;
   height: 3.5rem;
@@ -443,7 +444,7 @@ body {
 }
 
 .toast {
-    background: rgba(30, 41, 59, 0.9);
+    background: rgba(23, 23, 26, 0.94);
     backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: white;
@@ -511,7 +512,7 @@ body {
 .reload-btn:hover {
   opacity: 1;
   color: var(--brand-primary);
-  background: rgba(99, 102, 241, 0.12);
+  background: rgba(255, 255, 255, 0.10);
 }
 .reload-btn:active {
   transform: scale(0.9);
@@ -534,18 +535,18 @@ body {
 }
 .reload-btn.attention:hover {
   color: var(--brand-accent);
-  background: rgba(255, 116, 140, 0.15);
+  background: rgba(244, 63, 94, 0.15);
 }
 @keyframes reload-pulse {
   0%, 100% {
     opacity: 1;
     transform: scale(1);
-    filter: drop-shadow(0 0 0 rgba(255, 116, 140, 0));
+    filter: drop-shadow(0 0 0 rgba(244, 63, 94, 0));
   }
   50% {
     opacity: 0.5;
     transform: scale(1.1);
-    filter: drop-shadow(0 0 6px rgba(255, 116, 140, 0.75));
+    filter: drop-shadow(0 0 6px rgba(244, 63, 94, 0.75));
   }
 }
 
@@ -567,15 +568,66 @@ body {
   letter-spacing: 0.05em;
 }
 
-/* 2차 후보(공식 폴백)가 있는 방송 표시용 빨간 점 */
+/* ON AIR 램프 — 항상 표시. 기본은 회색(꺼짐), 재생 중 .live 로 빨간 점등 */
+.on-air {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 999px;
+  /* 꺼진 상태(회색) */
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  opacity: 0.6;
+  transition: color 0.3s, background 0.3s, border-color 0.3s, opacity 0.3s;
+}
+.on-air i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+/* 켜진 상태(재생 중): 빨간 점등 + 점 펄스 */
+.on-air.live {
+  color: var(--brand-accent);
+  background: rgba(244, 63, 94, 0.10);
+  border-color: rgba(244, 63, 94, 0.30);
+  opacity: 1;
+}
+.on-air.live i {
+  background: var(--brand-accent);
+  box-shadow: 0 0 8px var(--brand-accent);
+  animation: reload-pulse 1.6s ease-in-out infinite;
+}
+
+/* 주파수 옆 MHz 단위 — 작고 은은하게 */
+.freq-unit {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--text-dim);
+  -webkit-text-fill-color: var(--text-dim);
+  margin-left: 6px;
+}
+
+/* 2차 후보(공식 폴백)가 있는 방송 표시용 빨간 점 — 주파수 배지 안쪽 상단 */
 .fallback-dot {
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: #ef4444;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.75);
-  align-self: center;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.85);
 }
 
 .station-name {
@@ -969,12 +1021,11 @@ body {
     opacity: 0.6;
 }
 
-/* v1.2.2: Universal Visualizer Container (Centrally aligned for flexibility) */
+/* v2.6.0: 시각화를 배경 전체가 아니라 전용 띠(band)로 — 주파수/버튼과 겹치지 않게 */
 .visualizer-container {
-    position: absolute;
-    inset: 0;
+    position: relative;
     width: 100%;
-    height: 100%;
+    height: 150px;
     z-index: 0;
     pointer-events: none;
     overflow: hidden;
@@ -1009,11 +1060,11 @@ main {
 
 .glow-line {
     width: 4px;
-    background: linear-gradient(to bottom, #00f2ff, var(--brand-primary), #00f2ff);
+    background: linear-gradient(to bottom, #e4e4e7, #a1a1aa, #71717a); /* Soft Mono 파형 */
     border-radius: 20px; /* Full rounded for symmetrical look */
     will-change: height, opacity;
-    box-shadow: 0 0 15px var(--brand-primary);
-    opacity: 0.8;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+    opacity: 0.85;
 }
 
 /* Mode 3: Sharp Dense Spectrum (Bottom Aligned - User's Favorite) */
@@ -1055,3 +1106,71 @@ main {
     0% { transform: translateX(0); }
     100% { transform: translateX(50%); }
 }
+
+/* ============================================================
+   v2.6.0 Design Refresh
+   기능·레이아웃·색 정체성은 그대로. 타이포/깊이/디테일만 정제.
+   모든 규칙은 덧입히기(override)라 기존 요소·기능은 하나도 빠지지 않음.
+   ============================================================ */
+:root {
+  --font-display: 'Outfit', 'Pretendard', 'Inter', system-ui, sans-serif;
+}
+
+/* 배경: near-black + 은은한 화이트 글로우로 깊이감 (모노) */
+body {
+  background-color: var(--primary-bg);
+  background-image:
+    radial-gradient(900px 620px at 15% -6%, rgba(255, 255, 255, 0.05), transparent 55%),
+    radial-gradient(760px 640px at 92% 108%, rgba(255, 255, 255, 0.03), transparent 55%);
+}
+
+/* 로고 워드마크·헤더는 기존(Pretendard) 유지 — 사용자 피드백으로 원복 */
+
+/* 상단 시계: 자릿수 정렬 */
+#header-clock { font-variant-numeric: tabular-nums; }
+
+/* 주파수: 히어로 타이포 — tabular-nums + 은은한 화이트 발광 (모노) */
+#current-freq {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  filter: drop-shadow(0 3px 16px rgba(255, 255, 255, 0.10));
+}
+#current-freq-text {
+  background: linear-gradient(180deg, #ffffff 30%, #a1a1aa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* 방송명: 살짝 정제 */
+#current-name-text { letter-spacing: 0.01em; }
+
+/* 재생 버튼: 유리 질감 유지 + 은은한 화이트 글로우 (모노) */
+#play-btn {
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.65), 0 0 22px rgba(255, 255, 255, 0.14) !important;
+}
+
+/* 스테이션 카드: 표면·보더·그림자 정제 */
+.station-card {
+  border-radius: 18px;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 22px -16px rgba(0, 0, 0, 0.9);
+}
+.station-card:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+}
+.station-card.active {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 12px 28px -18px rgba(0, 0, 0, 0.9);
+}
+
+/* 주파수 뱃지: 라운드 정돈 (모노, 시스템 폰트) */
+.station-badge {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  border-radius: 14px;
+}
+
