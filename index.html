@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>아빠 라디오 v2.6.0 - 우리가족 </title>
-    <link rel="manifest" href="manifest.json?v=2.6.0">
+    <title>아빠 라디오 v3.0.0 - 우리가족 </title>
+    <link rel="manifest" href="manifest.json?v=3.0.0">
     <meta name="theme-color" content="#0c0c0e">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -51,7 +51,7 @@
             <div class="flex justify-between w-full items-center">
                 <div class="logo">
                     <span class="text-2xl font-black tracking-tighter text-white">Daddy Radio <small
-                            class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v2.6.0</small></span>
+                            class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v3.0.0</small></span>
                 </div>
                 <div id="header-clock"
                     class="text-2xl font-mono text-brand-primary opacity-90 uppercase tracking-widest">PM 00:00
@@ -179,12 +179,16 @@
         let eqCaps = new Array(64).fill(0);       // 모노 모드용 피크 캡 위치
         let eqCapVelocity = new Array(64).fill(0); // 피크 캡 낙하 속도
 
+        // 우리 가족 전용 Cloudflare Worker 중계 서버 (radio.bsod.kr 대체)
+        const PROXY_BASE = 'https://daddy-radio.fromtotoro.workers.dev/stream/';
+        const OLD_PROXY_BASE = 'https://radio.bsod.kr/stream/';
+
         // 기본 제공 방송 목록
         const DEFAULT_STATIONS = [
-            { id: 'kbs_classic', name: 'KBS 1FM (클래식)', freq: '93.1MHz', url: 'https://radio.bsod.kr/stream/?stn=kbs&ch=1fm', color: '#005bac' },
-            { id: 'kbs_cool', name: 'KBS 2FM (쿨FM)', freq: '89.1MHz', url: 'https://radio.bsod.kr/stream/?stn=kbs&ch=2fm', color: '#e30613' },
-            { id: 'mbc_sfm', name: 'MBC 표준FM', freq: '95.9MHz', url: 'https://radio.bsod.kr/stream/?stn=mbc&ch=sfm', color: '#e30613' },
-            { id: 'sbs_power', name: 'SBS 파워FM', freq: '107.7MHz', url: 'https://radio.bsod.kr/stream/?stn=sbs&ch=powerfm', color: '#00a0e9' }
+            { id: 'kbs_classic', name: 'KBS 1FM (클래식)', freq: '93.1MHz', url: `${PROXY_BASE}?stn=kbs&ch=1fm`, color: '#005bac' },
+            { id: 'kbs_cool', name: 'KBS 2FM (쿨FM)', freq: '89.1MHz', url: `${PROXY_BASE}?stn=kbs&ch=2fm`, color: '#e30613' },
+            { id: 'mbc_sfm', name: 'MBC 표준FM', freq: '95.9MHz', url: `${PROXY_BASE}?stn=mbc&ch=sfm`, color: '#e30613' },
+            { id: 'sbs_power', name: 'SBS 파워FM', freq: '107.7MHz', url: `${PROXY_BASE}?stn=sbs&ch=powerfm`, color: '#00a0e9' }
         ];
 
         // 검증된 한국 방송 목록 (검색용)
@@ -539,6 +543,15 @@
         function loadStations() {
             const saved = localStorage.getItem('radio_stations');
             userStations = saved ? JSON.parse(saved) : [...DEFAULT_STATIONS];
+            // 기존에 저장된 즐겨찾기의 구 프록시(bsod.kr) 주소를 새 전용 서버로 자동 이전
+            let migrated = false;
+            userStations.forEach(s => {
+                if (s.url && s.url.startsWith(OLD_PROXY_BASE)) {
+                    s.url = s.url.replace(OLD_PROXY_BASE, PROXY_BASE);
+                    migrated = true;
+                }
+            });
+            if (migrated) localStorage.setItem('radio_stations', JSON.stringify(userStations));
             renderStations();
             renderSearchList();
         }
@@ -567,7 +580,7 @@
         // 전체 방송 목록(검색 창) UI 렌더링
         function renderSearchList() {
             searchViewResults.innerHTML = VERIFIED_KR_STATIONS.map(s => {
-                const url = `https://radio.bsod.kr/stream/?stn=${s.stn}${s.ch ? '&ch=' + s.ch : ''}`;
+                const url = `${PROXY_BASE}?stn=${s.stn}${s.ch ? '&ch=' + s.ch : ''}`;
                 const isSaved = userStations.some(us => us.url === url);
                 const sData = encodeURIComponent(JSON.stringify({ name: s.name, url: url, freq: s.freq }));
                 const freqText = s.freq.replace('MHz', '');
@@ -698,11 +711,11 @@
         audio.addEventListener('pause', clearStallTimer);
 
         // ─── 다중 소스 폴백(failover) ──────────────────────────────────
-        // true면 방송사 공식 소스를 먼저 시도(즉시 재생), bsod.kr 프록시를 폴백으로.
-        // false면 기존처럼 bsod.kr 프록시를 먼저, 실패 시 공식 소스로 폴백.
+        // true면 방송사 공식 소스를 먼저 시도(즉시 재생), 전용 서버(Cloudflare Worker)를 폴백으로.
+        // false면 전용 서버를 먼저, 실패 시 공식 소스로 폴백.
         const PREFER_OFFICIAL_FIRST = false;
 
-        // bsod.kr URL의 stn/ch → 방송사 공식 소스(브라우저 직접 재생, CORS 허용 확인됨)
+        // 프록시 URL의 stn/ch → 방송사 공식 소스(브라우저 직접 재생, CORS 허용 확인됨)
         // type: 'static'(정적 m3u8) | 'kbs'(JSON API) | 'sbs'(텍스트 API)
         const STREAM_FALLBACKS = {
             'kbs|1fm':     [{ type: 'kbs', code: 24 }],
@@ -720,7 +733,7 @@
             // MBC는 resolve API가 CORS를 안 줘서 브라우저 직접 폴백 불가 → 프록시(bsod.kr)만 사용
         };
 
-        // bsod.kr URL에서 stn/ch 파라미터 추출
+        // 프록시 URL에서 stn/ch 파라미터 추출
         function parseStnCh(url) {
             try {
                 const u = new URL(url, location.href);
@@ -1013,7 +1026,7 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js?v=2.6.0').then(() => console.log('SW Registered'));
+            navigator.serviceWorker.register('sw.js?v=3.0.0').then(() => console.log('SW Registered'));
         }
     </script>
 </body>
