@@ -1,6 +1,6 @@
 {
-  "name": "Daddy Radio v3.0.0",
-  "short_name": "Daddy v3.0.0",
+  "name": "Daddy Radio",
+  "short_name": "Daddy Radio",
   "description": "Premium Korean Radio Streaming Web App",
   "start_url": "./index.html",
   "scope": "./",
