@@ -713,7 +713,7 @@
         // ─── 다중 소스 폴백(failover) ──────────────────────────────────
         // true면 방송사 공식 소스를 먼저 시도(즉시 재생), 전용 서버(Cloudflare Worker)를 폴백으로.
         // false면 전용 서버를 먼저, 실패 시 공식 소스로 폴백.
-        const PREFER_OFFICIAL_FIRST = false;
+        const PREFER_OFFICIAL_FIRST = true; // 공식 경로가 Worker보다 훨씬 빠름(실측) → 1순위
 
         // 프록시 URL의 stn/ch → 방송사 공식 소스(브라우저 직접 재생, CORS 허용 확인됨)
         // type: 'static'(정적 m3u8) | 'kbs'(JSON API) | 'sbs'(텍스트 API)
@@ -835,7 +835,13 @@
                     fragLoadingRetryDelay: 500,
                     fragLoadingMaxRetryTimeout: 8000,
                     maxBufferHole: 0.5,
-                    nudgeMaxRetry: 8
+                    nudgeMaxRetry: 8,
+                    // 버퍼 확대: 라이브 지점보다 조금 뒤에서 재생해 여유분을 확보 →
+                    // 네트워크가 잠깐 흔들려도 소리가 끊기지 않음 (라디오라 몇 초 지연은 무관)
+                    liveSyncDurationCount: 6,
+                    liveMaxLatencyDurationCount: 12,
+                    maxBufferLength: 60,
+                    maxMaxBufferLength: 120
                 });
                 currentHls.loadSource(finalUrl);
                 currentHls.attachMedia(audio);
