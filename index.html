@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>아빠 라디오 v3.0.1 - 우리가족 </title>
-    <link rel="manifest" href="manifest.json?v=3.0.1">
+    <title>아빠 라디오 v3.0.2 - 우리가족 </title>
+    <link rel="manifest" href="manifest.json?v=3.0.2">
     <meta name="theme-color" content="#0c0c0e">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -51,7 +51,7 @@
             <div class="flex justify-between w-full items-center">
                 <div class="logo">
                     <span class="text-2xl font-black tracking-tighter text-white">Daddy Radio <small
-                            class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v3.0.1</small></span>
+                            class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v3.0.2</small></span>
                 </div>
                 <div id="header-clock"
                     class="text-2xl font-mono text-brand-primary opacity-90 uppercase tracking-widest">PM 00:00
@@ -799,7 +799,23 @@
             }
 
             const src = sources[sourceIndex];
-            const goNext = () => { if (myToken === loadToken) loadStream(station, sourceIndex + 1, isReload); };
+
+            // 시작 감시: 12초 안에 소리가 안 나오면 이 주소는 포기하고 다음 주소로.
+            // (재생이 한 번도 시작되지 않으면 stall 감지가 동작하지 않아 "연결 중"에 멈추는 것을 방지)
+            let started = false;
+            const onStarted = () => { started = true; };
+            audio.addEventListener('playing', onStarted, { once: true });
+            const startWatch = setTimeout(() => {
+                audio.removeEventListener('playing', onStarted);
+                if (started || myToken !== loadToken) return;
+                if (currentHls) { try { currentHls.destroy(); } catch (e) {} currentHls = null; }
+                goNext();
+            }, 12000);
+
+            const goNext = () => {
+                clearTimeout(startWatch);
+                if (myToken === loadToken) loadStream(station, sourceIndex + 1, isReload);
+            };
 
             // 폴백(2차 이상)으로 넘어갈 때만 조용한 안내
             if (sourceIndex > 0 && !isReload) showToast('대체 주소로 연결 중…');
@@ -836,12 +852,10 @@
                     fragLoadingMaxRetryTimeout: 8000,
                     maxBufferHole: 0.5,
                     nudgeMaxRetry: 8,
-                    // 버퍼 확대: 라이브 지점보다 조금 뒤에서 재생해 여유분을 확보 →
-                    // 네트워크가 잠깐 흔들려도 소리가 끊기지 않음 (라디오라 몇 초 지연은 무관)
-                    liveSyncDurationCount: 6,
-                    liveMaxLatencyDurationCount: 12,
-                    maxBufferLength: 60,
-                    maxMaxBufferLength: 120
+                    // 라이브 지점에서 조각 2개 뒤에서 재생.
+                    // 방송사 재생목록이 짧아서(iFM 3조각≈6초, KBS 5조각≈20초) 이보다 뒤를 잡으면
+                    // 목록 밖 위치를 요구해 재생이 멈춘다 → 반드시 목록 길이보다 작게 유지.
+                    liveSyncDurationCount: 2
                 });
                 currentHls.loadSource(finalUrl);
                 currentHls.attachMedia(audio);
@@ -1032,7 +1046,7 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js?v=3.0.1').then(() => console.log('SW Registered'));
+            navigator.serviceWorker.register('sw.js?v=3.0.2').then(() => console.log('SW Registered'));
         }
     </script>
 </body>
