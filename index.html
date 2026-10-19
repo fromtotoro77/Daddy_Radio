@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>아빠 라디오 v3.0.2 - 우리가족 </title>
-    <link rel="manifest" href="manifest.json?v=3.0.2">
+    <title>아빠 라디오 v3.0.3 - 우리가족 </title>
+    <link rel="manifest" href="manifest.json?v=3.0.3">
     <meta name="theme-color" content="#0c0c0e">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="icon-512.png">
 
     <!-- Design System: Tailwind CSS v3 CDN -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.17?plugins=forms,container-queries"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -35,7 +35,7 @@
     </script>
 
     <link rel="stylesheet" href="app.css">
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.7.3/dist/hls.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -51,7 +51,7 @@
             <div class="flex justify-between w-full items-center">
                 <div class="logo">
                     <span class="text-2xl font-black tracking-tighter text-white">Daddy Radio <small
-                            class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v3.0.2</small></span>
+                            class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v3.0.3</small></span>
                 </div>
                 <div id="header-clock"
                     class="text-2xl font-mono text-brand-primary opacity-90 uppercase tracking-widest">PM 00:00
@@ -715,6 +715,9 @@
         // false면 전용 서버를 먼저, 실패 시 공식 소스로 폴백.
         const PREFER_OFFICIAL_FIRST = true; // 공식 경로가 Worker보다 훨씬 빠름(실측) → 1순위
 
+        // 재생목록을 2~3조각(수 초)만 유지하는 방송 → 라이브 지점에 더 가깝게 재생해야 멈추지 않음
+        const SHORT_WINDOW_STATIONS = ['ifm'];
+
         // 프록시 URL의 stn/ch → 방송사 공식 소스(브라우저 직접 재생, CORS 허용 확인됨)
         // type: 'static'(정적 m3u8) | 'kbs'(JSON API) | 'sbs'(텍스트 API)
         const STREAM_FALLBACKS = {
@@ -725,6 +728,7 @@
             'kbs|3radio':  [{ type: 'kbs', code: 23 }],
             'sbs|powerfm': [{ type: 'sbs', dev: 'powerpc', ch: 'powerfm' }],
             'sbs|lovefm':  [{ type: 'sbs', dev: 'lovepc',  ch: 'lovefm' }],
+            'sbs|dmb':     [{ type: 'sbs', dev: 'sbsdmbpc', ch: 'sbsdmb' }], // 고릴라디오M (2026-10 채널명 dmb→sbsdmb)
             'cbs|mfm':     [{ type: 'static', url: 'https://m-aac.cbs.co.kr/mweb_cbs939/_definst_/cbs939.stream/playlist.m3u8' }],
             'cbs|sfm':     [{ type: 'static', url: 'https://m-aac.cbs.co.kr/mweb_cbs981/_definst_/cbs981.stream/playlist.m3u8' }],
             'ebs|':        [{ type: 'static', url: 'https://ebsonair.ebs.co.kr/fmradiofamilypc/familypc1m/playlist.m3u8' }],
@@ -833,6 +837,9 @@
             // 프록시/정적 소스는 재로드 시 cache-buster로 fresh 요청 (KBS/SBS는 API가 매번 새 토큰 발급)
             const finalUrl = (isReload && (src.type === 'proxy' || src.type === 'static')) ? withCacheBuster(url) : url;
 
+            // 재생 위치: 라이브 지점에서 조각 2개 뒤. 재생목록이 아주 짧은 방송(iFM: 2~3조각)은 1개 뒤.
+            const liveSyncCount = SHORT_WINDOW_STATIONS.includes((parseStnCh(station.url) || {}).stn) ? 1 : 2;
+
             const onReady = () => {
                 if (myToken !== loadToken) return;
                 nameDisplay.textContent = station.name || '';
@@ -855,7 +862,7 @@
                     // 라이브 지점에서 조각 2개 뒤에서 재생.
                     // 방송사 재생목록이 짧아서(iFM 3조각≈6초, KBS 5조각≈20초) 이보다 뒤를 잡으면
                     // 목록 밖 위치를 요구해 재생이 멈춘다 → 반드시 목록 길이보다 작게 유지.
-                    liveSyncDurationCount: 2
+                    liveSyncDurationCount: liveSyncCount
                 });
                 currentHls.loadSource(finalUrl);
                 currentHls.attachMedia(audio);
@@ -1046,7 +1053,7 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js?v=3.0.2').then(() => console.log('SW Registered'));
+            navigator.serviceWorker.register('sw.js?v=3.0.3').then(() => console.log('SW Registered'));
         }
     </script>
 </body>
