@@ -161,7 +161,8 @@
             });
             await done(t);
             M.group = null;
-            showToast(`'${name}' ${files.length}곡`);
+            const skipped = picked.length - files.length;
+            showToast(`'${name}' ${files.length}곡${skipped ? ` (음원 아닌 파일 ${skipped}개 제외)` : ''}`);
         } catch (err) {
             console.error(err);
             showToast('저장 공간이 부족해 폴더를 지정하지 못했습니다');
@@ -234,6 +235,23 @@
     }
 
     audio.addEventListener('ended', () => { if (M.active) next(); });
+
+    // 재생할 수 없는 곡(예: 안드로이드가 못 여는 애플 무손실 m4a)은 알리고 다음 곡으로.
+    // 폴더 전체가 재생 불가면 무한히 넘기지 않도록 연속 실패 횟수를 센다.
+    let failStreak = 0;
+    audio.addEventListener('playing', () => { if (M.active) failStreak = 0; });
+    audio.addEventListener('error', () => {
+        if (!M.active || !audio.src.startsWith('blob:')) return;
+        failStreak++;
+        const name = nameDisplay.textContent;
+        if (failStreak >= M.playlist.length) {
+            showToast('이 폴더의 곡을 재생할 수 없습니다 (지원하지 않는 형식)');
+            failStreak = 0;
+            return stopMusic();
+        }
+        showToast(`재생할 수 없는 파일: ${name}`);
+        next();
+    });
     document.getElementById('music-prev').addEventListener('click', prev);
     document.getElementById('music-next').addEventListener('click', next);
 
