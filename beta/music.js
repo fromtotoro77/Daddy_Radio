@@ -126,6 +126,33 @@
                     </button>`;
                 }).join('')}
             </div>`;
+        // 목록에서 재생 중인 곡 이름이 길면 흐르게
+        const playingName = view.querySelector('.music-track.playing .music-track-name');
+        if (playingName) marquee(playingName, playingName.textContent);
+    }
+
+    // ─── 긴 곡 제목 흐르게(마키): 칸에 다 들어가면 그대로, 넘칠 때만 왼쪽으로 흐름 ───
+    const MQ_GAP = 48;      // 제목 끝과 다시 시작하는 제목 사이 간격(px)
+    const MQ_SPEED = 35;    // 흐르는 속도(px/초)
+    function marquee(el, text) {
+        el.classList.remove('marquee');
+        el.textContent = text;
+        // 화면에 안 보이는 상태(다른 페이지 등)면 폭을 잴 수 없으니 보일 때 다시 시도
+        if (el.clientWidth === 0) {
+            const ro = new ResizeObserver(() => {
+                if (el.clientWidth > 0 && el.textContent === text) { ro.disconnect(); marquee(el, text); }
+            });
+            ro.observe(el);
+            return;
+        }
+        if (el.scrollWidth <= el.clientWidth + 1) return; // 다 보이면 흐르지 않음
+        el.classList.add('marquee');
+        el.innerHTML = `<span class="mq-inner"><span>${esc(text)}</span><span aria-hidden="true">${esc(text)}</span></span>`;
+        const inner = el.firstElementChild;
+        const shift = inner.firstElementChild.offsetWidth + MQ_GAP;
+        inner.style.setProperty('--mq-gap', `${MQ_GAP}px`);
+        inner.style.setProperty('--mq-shift', `-${shift}px`);
+        inner.style.animationDuration = `${Math.max(6, shift / MQ_SPEED + 1.5).toFixed(1)}s`;
     }
 
     // ─── 사용자 동작 ────────────────────────────────────────────
@@ -267,9 +294,10 @@
         audio.src = M.objUrl;
         if (old) URL.revokeObjectURL(old);
         M.currentId = t.id;
+        resetProgress();
 
         freqDisplay.textContent = `${M.idx + 1}/${n}`;
-        nameDisplay.textContent = t.name;
+        marquee(nameDisplay, t.name); // 플레이어의 곡 제목도 길면 흐르게
         playAudio();
         updateMediaSession(t);
         render();
@@ -292,6 +320,56 @@
     }
 
     audio.addEventListener('ended', () => { if (M.active) next(); });
+
+    // ─── 진행 막대: 현재 시간 ━━●── 전체 길이, 끌거나 눌러서 원하는 위치로 이동 ───
+    const seek = document.getElementById('music-seek');
+    const timeCur = document.getElementById('music-time-cur');
+    const timeDur = document.getElementById('music-time-dur');
+    let dragging = false;
+
+    const fmt = (sec) => {
+        if (!isFinite(sec) || sec < 0) sec = 0;
+        const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.floor(sec % 60);
+        return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+    };
+    const setBar = (ratio) => {
+        seek.value = Math.round(ratio * 1000);
+        seek.style.setProperty('--pct', `${(ratio * 100).toFixed(2)}%`); // 재생된 부분 채우기
+    };
+    function updateProgress() {
+        if (!M.active || dragging) return;
+        const d = audio.duration;
+        timeDur.textContent = fmt(d);
+        timeCur.textContent = fmt(audio.currentTime);
+        setBar(isFinite(d) && d > 0 ? audio.currentTime / d : 0);
+        updatePositionState();
+    }
+    ['timeupdate', 'durationchange', 'loadedmetadata', 'seeked'].forEach((ev) => audio.addEventListener(ev, updateProgress));
+
+    // 끄는 중에는 시간만 미리 보여주고, 손을 떼면 그 위치로 이동
+    seek.addEventListener('input', () => {
+        dragging = true;
+        const ratio = seek.value / 1000;
+        seek.style.setProperty('--pct', `${(ratio * 100).toFixed(2)}%`);
+        timeCur.textContent = fmt(ratio * (audio.duration || 0));
+    });
+    seek.addEventListener('change', () => {
+        const d = audio.duration;
+        if (M.active && isFinite(d) && d > 0) audio.currentTime = (seek.value / 1000) * d;
+        dragging = false;
+        updateProgress();
+    });
+    function resetProgress() { timeCur.textContent = '0:00'; timeDur.textContent = '0:00'; setBar(0); }
+
+    // 잠금화면·알림창 진행 막대
+    function updatePositionState() {
+        if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
+        const d = audio.duration;
+        if (!isFinite(d) || d <= 0) return;
+        try {
+            navigator.mediaSession.setPositionState({ duration: d, playbackRate: audio.playbackRate || 1, position: Math.min(audio.currentTime, d) });
+        } catch (e) {}
+    }
 
     // 재생할 수 없는 곡(예: 안드로이드가 못 여는 애플 무손실 m4a)은 알리고 다음 곡으로.
     // 폴더 전체가 재생 불가면 무한히 넘기지 않도록 연속 실패 횟수를 센다.
@@ -329,6 +407,7 @@
     // 음악 모드 종료 (라디오 재생이 시작될 때 index.html의 loadStream에서 호출)
     function exitMusicMode() {
         if (!M.active) return;
+        nameDisplay.classList.remove('marquee'); // 라디오 방송명은 흐르지 않게
         audio.loop = false; // 라디오에 반복 설정이 남지 않게
         M.active = false;
         M.currentId = null;
@@ -376,6 +455,7 @@
         set('pause', pauseAudio);
         set('nexttrack', next);
         set('previoustrack', prev);
+        set('seekto', (d) => { if (M.active && d && isFinite(d.seekTime)) audio.currentTime = d.seekTime; });
         if (!on) navigator.mediaSession.metadata = null;
     }
 

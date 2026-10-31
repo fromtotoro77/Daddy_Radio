@@ -1393,3 +1393,84 @@ body.music-mode #current-name {
   color: #fff;
 }
 .music-action.on svg { color: var(--brand-accent); }
+
+/* 음악 진행 막대: 음악 모드에서만 보임 */
+.music-progress {
+  display: none;
+  width: 100%;
+  max-width: 340px;
+  align-items: center;
+  gap: 10px;
+  margin-top: -4px;
+  position: relative;
+  z-index: 10;
+}
+body.music-mode .music-progress { display: flex; }
+.music-time {
+  flex: none;
+  min-width: 38px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+#music-seek {
+  --pct: 0%;
+  flex: 1;
+  height: 28px;           /* 손가락으로 잡기 쉽게 터치 영역은 넉넉히 */
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  touch-action: none;     /* 끄는 동안 화면 스크롤·넘김 방지 */
+}
+#music-seek::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--brand-accent) var(--pct), rgba(255, 255, 255, 0.15) var(--pct));
+}
+#music-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.25);
+}
+#music-seek::-moz-range-track { height: 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.15); }
+#music-seek::-moz-range-progress { height: 4px; border-radius: 999px; background: var(--brand-accent); }
+#music-seek::-moz-range-thumb { width: 14px; height: 14px; border: none; border-radius: 50%; background: #fff; }
+
+/* 긴 곡 제목 흐르기(마키): 넘칠 때만 .marquee 가 붙음 */
+body.music-mode #current-name-text {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.marquee {
+  text-overflow: clip !important;
+  text-align: left;
+  /* 양 끝을 살짝 흐리게 해서 글자가 자연스럽게 들어오고 나가게 */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 16px), transparent 100%);
+}
+.mq-inner {
+  display: inline-flex;
+  gap: var(--mq-gap, 48px);
+  will-change: transform;
+  animation: mq-scroll 10s linear infinite;
+}
+/* 처음 15%는 멈춰서 앞부분을 보여준 뒤 흐름 → 두 번째 제목이 처음 자리에 오면 반복 */
+@keyframes mq-scroll {
+  0%, 15% { transform: translateX(0); }
+  100% { transform: translateX(var(--mq-shift, -100%)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mq-inner { animation: none; }
+  .mq-inner > span + span { display: none; }
+  .marquee { text-overflow: ellipsis !important; }
+}

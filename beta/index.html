@@ -90,6 +90,13 @@
                         </div>
                     </div>
 
+                    <!-- 3-1. 음악 진행 막대 (음악 모드에서만 보임): 현재 시간 ━━●── 전체 길이 -->
+                    <div id="music-progress" class="music-progress">
+                        <span id="music-time-cur" class="music-time">0:00</span>
+                        <input id="music-seek" type="range" min="0" max="1000" step="1" value="0" aria-label="재생 위치">
+                        <span id="music-time-dur" class="music-time">0:00</span>
+                    </div>
+
                     <!-- 4. 재생 버튼 -->
                     <div class="flex items-center gap-8 relative z-10">
                         <button id="music-prev" class="music-nav-btn" aria-label="이전 곡">
@@ -628,8 +635,10 @@
             let touchEndX = 0;
             const swipeThreshold = 50;
 
+            let swipeBlocked = false;
             document.addEventListener('touchstart', (e) => {
                 touchStartX = e.changedTouches[0].screenX;
+                swipeBlocked = !!e.target.closest('.music-progress'); // 진행 막대를 끄는 동작은 페이지 넘김이 아님
             }, false);
 
             document.addEventListener('touchend', (e) => {
@@ -638,6 +647,7 @@
             }, false);
 
             function handleSwipe() {
+                if (swipeBlocked) return;
                 const diff = touchEndX - touchStartX;
                 if (Math.abs(diff) > swipeThreshold) {
                     // 왼쪽으로 밀면 다음 페이지, 오른쪽으로 밀면 이전 페이지 (끝에서 처음으로 순환)
@@ -654,7 +664,7 @@
             window.addEventListener('click', (e) => {
                 const nowPlayingSection = document.querySelector('section');
                 if (nowPlayingSection && nowPlayingSection.contains(e.target)) {
-                    if (!e.target.closest('button') && !e.target.closest('.station-card')) {
+                    if (!e.target.closest('button') && !e.target.closest('.station-card') && !e.target.closest('.music-progress')) {
                         cycleVisualizerMode();
                     }
                 }
@@ -1068,7 +1078,7 @@
         window.addEventListener('load', init);
     </script>
 
-    <script src="music.js?v=3.1.0b6"></script>
+    <script src="music.js?v=3.1.0b7"></script>
 
     <script>
         if ('serviceWorker' in navigator) {
