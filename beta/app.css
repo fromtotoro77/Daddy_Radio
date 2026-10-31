@@ -1486,3 +1486,22 @@ body[data-page="music"] #play-btn { width: 64px; height: 64px; }
 body[data-page="music"] #play-btn svg { width: 26px; height: 26px; }
 body[data-page="music"] .music-nav-btn { width: 44px; height: 44px; padding: 11px; }
 body[data-page="music"] #page-music { padding-top: 8px; }
+
+/* ============================================================
+   레이아웃 고정 규칙: 한 화면 안에서 무엇을 눌러도 플레이어 영역 크기는 그대로.
+   상태에 따라 요소를 없애지(display:none) 않고, 자리는 남긴 채 보이거나 흐려지게만 한다.
+   ============================================================ */
+/* 진행 막대 줄: 항상 자리 차지. 라디오일 때는 안 보이게만 */
+.music-progress { display: flex; visibility: hidden; }
+body.music-mode .music-progress,
+body[data-page="music"] .music-progress { visibility: visible; }
+/* 이전/다음 버튼: 항상 자리 차지 */
+.music-nav-btn { display: inline-flex; visibility: hidden; }
+body.music-mode .music-nav-btn,
+body[data-page="music"] .music-nav-btn { visibility: visible; }
+/* 음악 화면에서 아직 곡을 재생하지 않았으면 흐리게, 눌러지지 않게 */
+body[data-page="music"]:not(.music-mode) .music-progress,
+body[data-page="music"]:not(.music-mode) .music-nav-btn { opacity: 0.3; pointer-events: none; }
+/* 곡 제목/방송명 줄: 항상 한 줄 높이 (길면 말줄임·흐름) */
+#current-name { max-width: 80vw; }
+#current-name-text { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

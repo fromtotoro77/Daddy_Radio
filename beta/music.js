@@ -66,7 +66,19 @@
     };
 
     // ─── 화면 그리기 ────────────────────────────────────────────
+    // 같은 화면을 다시 그릴 때(곡을 눌러 재생 표시만 바뀜 등)는 스크롤 위치를 그대로 둔다.
+    // 다른 화면(폴더 열기/뒤로)으로 바뀔 때만 맨 위로.
+    let lastScreen = null;
     async function render() {
+        const top = view.scrollTop;
+        await renderScreen();
+        const head = view.querySelector('.music-folder-head h3');
+        const screen = (head ? head.textContent : 'pick') + (view.querySelector('[data-act="back"]') ? '|sub' : '|top');
+        view.scrollTop = screen === lastScreen ? top : 0;
+        lastScreen = screen;
+    }
+
+    async function renderScreen() {
         if (!db) { view.innerHTML = '<div class="music-empty">음악 저장소를 열 수 없습니다.</div>'; return; }
 
         const folder = await getFolder();
