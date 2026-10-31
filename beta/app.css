@@ -1303,3 +1303,25 @@ body.music-mode #current-name {
   cursor: pointer;
 }
 .music-change-btn:active { background: rgba(255, 255, 255, 0.08); }
+
+/* 폴더 고르는 방법 안내 + 보조 버튼 */
+.music-hint {
+  padding: 4px 8px 0;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.music-hint b { color: var(--text-main); font-weight: 700; }
+.music-link-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

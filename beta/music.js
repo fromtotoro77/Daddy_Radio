@@ -40,6 +40,7 @@
 
     // ─── 상태 ───────────────────────────────────────────────────
     const M = {
+        picking: false,   // '폴더 변경'을 눌러 고르는 화면을 보는 중
         group: null,      // 화면에 열어 둔 하위 폴더 (null이면 하위 폴더 목록)
         playGroup: null,  // 재생 중인 하위 폴더
         playlist: [],     // 재생 순서대로 늘어선 곡 id
@@ -51,7 +52,8 @@
     };
 
     const view = document.getElementById('music-view');
-    const fileInput = document.getElementById('music-file-input');
+    const fileInput = document.getElementById('music-file-input');    // 폴더째 고르기
+    const filesInput = document.getElementById('music-files-input');  // 곡 직접 고르기
 
     const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -67,10 +69,12 @@
         if (!db) { view.innerHTML = '<div class="music-empty">음악 저장소를 열 수 없습니다.</div>'; return; }
 
         const folder = await getFolder();
-        if (!folder) {
+        if (!folder || M.picking) {
             view.innerHTML = `
                 <button class="music-add-card" data-act="pick">${ICON.folder}<span>폰 폴더 지정</span></button>
-                <div class="music-empty">폰에서 음악이 들어 있는 폴더를 하나 고르면<br>그 폴더의 음악을 순차 또는 랜덤으로 재생합니다.</div>`;
+                <div class="music-hint">폴더 <b>안으로 들어간 뒤</b>, 파일은 누르지 말고<br>화면 아래 <b>'이 폴더 사용'</b> 버튼을 누르세요.</div>
+                <button class="music-link-btn" data-act="pick-files">폴더 선택이 안 되면 곡 직접 고르기</button>
+                ${folder ? '<button class="music-link-btn" data-act="cancel-pick">취소</button>' : ''}`;
             return;
         }
 
@@ -84,7 +88,7 @@
                 <div class="music-folder-head">
                     <span class="music-folder-icon">${ICON.folder}</span>
                     <h3 class="truncate">${esc(folder.name)}</h3>
-                    <button class="music-change-btn" data-act="pick">폴더 변경</button>
+                    <button class="music-change-btn" data-act="change">폴더 변경</button>
                 </div>
                 ${groups.map((g) => `
                     <div class="station-card ${g === M.playGroup && M.active ? 'active' : ''}" data-act="open" data-group="${esc(g)}">
@@ -103,7 +107,7 @@
                     ? `<button class="music-icon-btn" data-act="back" title="하위 폴더 목록">${ICON.back}</button>`
                     : `<span class="music-folder-icon">${ICON.folder}</span>`}
                 <h3 class="truncate">${esc(group)}</h3>
-                ${groups.length > 1 ? '' : '<button class="music-change-btn" data-act="pick">폴더 변경</button>'}
+                ${groups.length > 1 ? '' : '<button class="music-change-btn" data-act="change">폴더 변경</button>'}
             </div>
             <div class="music-actions">
                 <button class="music-action" data-act="play-seq" ${tracks.length ? '' : 'disabled'}>${ICON.play}<span>순차 재생</span></button>
@@ -124,6 +128,9 @@
         if (!el) return;
         const act = el.dataset.act;
         if (act === 'pick') fileInput.click();
+        else if (act === 'pick-files') filesInput.click();
+        else if (act === 'change') { M.picking = true; render(); }
+        else if (act === 'cancel-pick') { M.picking = false; render(); }
         else if (act === 'open') { M.group = el.dataset.group; render(); }
         else if (act === 'back') { M.group = null; render(); }
         else if (act === 'play-seq') startPlay('seq');
@@ -133,9 +140,12 @@
 
     // 폰 폴더 지정: 고른 폴더 안의 음원 파일을 통째로 저장 (이전 폴더는 교체)
     const AUDIO_EXT = /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac)$/i;
-    fileInput.addEventListener('change', async () => {
-        const picked = [...fileInput.files];
-        fileInput.value = '';
+    fileInput.addEventListener('change', () => importPicked(fileInput));
+    filesInput.addEventListener('change', () => importPicked(filesInput));
+
+    async function importPicked(input) {
+        const picked = [...input.files];
+        input.value = '';
         await ready;
         if (!db) { showToast('음악 저장소를 열 수 없습니다'); return; }
         const files = picked.filter((f) => (f.type || '').startsWith('audio/') || AUDIO_EXT.test(f.name));
@@ -144,8 +154,9 @@
         // 폴더째 골랐으면 경로가 '지정폴더/하위폴더/.../곡.mp3'. 폴더 선택을 지원하지 않는 폰이면 이름을 물어본다.
         const rel = files[0].webkitRelativePath || '';
         let name = rel.includes('/') ? rel.split('/')[0] : '';
-        if (!name) name = (prompt('폴더 이름', '내 음악') || '').trim();
+        if (!name) name = (prompt('이 곡들을 묶을 이름', '내 음악') || '').trim();
         if (!name) return;
+        M.picking = false;
 
         try {
             if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); // 저장 공간이 임의로 지워지지 않게 요청
@@ -168,7 +179,7 @@
             showToast('저장 공간이 부족해 폴더를 지정하지 못했습니다');
         }
         render();
-    });
+    }
 
     // ─── 재생 ──────────────────────────────────────────────────
     // 지금 화면에 열려 있는 하위 폴더 (화면 머리줄의 제목과 같음)

@@ -124,6 +124,7 @@
             style="display: none;">
             <div id="music-view" class="flex-grow overflow-y-auto no-scrollbar space-y-4 pt-2 pb-10"></div>
             <input id="music-file-input" type="file" accept="audio/*,audio/mp4,audio/x-m4a,audio/aac,.mp3,.m4a,.aac,.ogg,.oga,.opus,.wav,.flac" multiple webkitdirectory hidden>
+            <input id="music-files-input" type="file" accept="audio/*,audio/mp4,audio/x-m4a,audio/aac,.mp3,.m4a,.aac,.ogg,.oga,.opus,.wav,.flac" multiple hidden>
         </div>
 
         <!-- PAGE: Search (Explorer) -->
@@ -1067,7 +1068,7 @@
         window.addEventListener('load', init);
     </script>
 
-    <script src="music.js?v=3.1.0b2"></script>
+    <script src="music.js?v=3.1.0b3"></script>
 
     <script>
         if ('serviceWorker' in navigator) {
