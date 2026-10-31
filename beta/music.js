@@ -88,6 +88,7 @@
                 <div class="music-folder-head">
                     <span class="music-folder-icon">${ICON.folder}</span>
                     <h3 class="truncate">${esc(folder.name)}</h3>
+                    <button class="music-change-btn" data-act="refresh">새 곡 반영</button>
                     <button class="music-change-btn" data-act="change">폴더 변경</button>
                 </div>
                 ${groups.map((g) => `
@@ -107,7 +108,8 @@
                     ? `<button class="music-icon-btn" data-act="back" title="하위 폴더 목록">${ICON.back}</button>`
                     : `<span class="music-folder-icon">${ICON.folder}</span>`}
                 <h3 class="truncate">${esc(group)}</h3>
-                ${groups.length > 1 ? '' : '<button class="music-change-btn" data-act="change">폴더 변경</button>'}
+                <button class="music-change-btn" data-act="refresh">새 곡 반영</button>
+                <button class="music-change-btn" data-act="change">폴더 변경</button>
             </div>
             <div class="music-actions">
                 <button class="music-action" data-act="play-seq" ${tracks.length ? '' : 'disabled'}>${ICON.play}<span>순차 재생</span></button>
@@ -130,6 +132,7 @@
         if (act === 'pick') fileInput.click();
         else if (act === 'pick-files') filesInput.click();
         else if (act === 'change') { M.picking = true; render(); }
+        else if (act === 'refresh') refreshFolder();
         else if (act === 'cancel-pick') { M.picking = false; render(); }
         else if (act === 'open') { M.group = el.dataset.group; render(); }
         else if (act === 'back') { M.group = null; render(); }
@@ -140,6 +143,17 @@
 
     // 폰 폴더 지정: 고른 폴더 안의 음원 파일을 통째로 저장 (이전 폴더는 교체)
     const AUDIO_EXT = /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac)$/i;
+    // 새 곡 반영: 폰 폴더에 곡을 넣은 뒤 같은 폴더를 다시 고르면 목록을 갱신한다
+    // (웹 앱은 폰 폴더를 계속 지켜볼 수 없어서, 다시 골라 줘야 새 곡을 알 수 있음)
+    async function refreshFolder() {
+        const folder = await getFolder();
+        if (!folder) return;
+        showToast(folder.mode === 'files'
+            ? `'${folder.name}'에 넣을 곡들을 다시 고르세요`
+            : `'${folder.name}' 폴더를 다시 고르세요`);
+        (folder.mode === 'files' ? filesInput : fileInput).click();
+    }
+
     fileInput.addEventListener('change', () => importPicked(fileInput));
     filesInput.addEventListener('change', () => importPicked(filesInput));
 
@@ -161,9 +175,12 @@
         try {
             if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); // 저장 공간이 임의로 지워지지 않게 요청
             if (M.active) stopMusic();
+            const prevFolder = await getFolder();
+            const key = (g, n) => `${g}/${n}`;
+            const before = new Set((await getAllTracks()).map((x) => key(x.group, x.name)));
             const t = db.transaction(['folder', 'tracks'], 'readwrite');
             t.objectStore('tracks').clear();
-            t.objectStore('folder').put({ id: 'current', name });
+            t.objectStore('folder').put({ id: 'current', name, mode: input === filesInput ? 'files' : 'folder' });
             files.forEach((f, i) => {
                 const parts = (f.webkitRelativePath || '').split('/');
                 // 지정 폴더 바로 아래 곡은 지정 폴더 이름으로, 그 밖은 첫 번째 하위 폴더 이름으로 묶는다
@@ -173,7 +190,18 @@
             await done(t);
             M.group = null;
             const skipped = picked.length - files.length;
-            showToast(`'${name}' ${files.length}곡${skipped ? ` (음원 아닌 파일 ${skipped}개 제외)` : ''}`);
+            if (prevFolder && prevFolder.name === name) {
+                // 같은 폴더를 다시 고름 → 바뀐 점만 알려줌
+                const after = new Set((await getAllTracks()).map((x) => key(x.group, x.name)));
+                const added = [...after].filter((k) => !before.has(k)).length;
+                const removed = [...before].filter((k) => !after.has(k)).length;
+                const parts = [];
+                if (added) parts.push(`새 곡 ${added}곡 추가`);
+                if (removed) parts.push(`${removed}곡 빠짐`);
+                showToast(parts.length ? `${parts.join(', ')} · 총 ${files.length}곡` : `바뀐 곡이 없습니다 (총 ${files.length}곡)`);
+            } else {
+                showToast(`'${name}' ${files.length}곡${skipped ? ` (음원 아닌 파일 ${skipped}개 제외)` : ''}`);
+            }
         } catch (err) {
             console.error(err);
             showToast('저장 공간이 부족해 폴더를 지정하지 못했습니다');
