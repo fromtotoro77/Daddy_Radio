@@ -46,8 +46,10 @@
         playlist: [],     // 재생 순서대로 늘어선 곡 id
         idx: -1,
         mode: 'seq',      // 'seq'(순차) | 'shuffle'(랜덤) | 'repeat'(한 곡 반복)
-        active: false,    // 음악 모드 여부 (false면 라디오 모드)
-        currentId: null,
+        currentId: null,  // 음악의 마지막 곡 (라디오를 듣는 동안에도 기억)
+        currentName: '',
+        savedTime: 0,     // 라디오가 소리를 가져갔을 때 멈춘 위치(초)
+        savedDur: 0,
         objUrl: null,
     };
 
@@ -105,7 +107,7 @@
                     <button class="music-change-btn" data-act="change">폴더 변경</button>
                 </div>
                 ${groups.map((g) => `
-                    <div class="station-card ${g === M.playGroup && M.active ? 'active' : ''}" data-act="open" data-group="${esc(g)}">
+                    <div class="station-card ${g === M.playGroup && M.currentId ? 'active' : ''}" data-act="open" data-group="${esc(g)}">
                         <div class="station-badge">${all.filter((t) => t.group === g).length}</div>
                         <div class="flex-grow min-w-0">
                             <h3 class="font-semibold text-zinc-100 truncate">${esc(g)}</h3>
@@ -126,11 +128,11 @@
             </div>
             <div class="music-actions">
                 ${[['seq', ICON.play, '순차 재생'], ['shuffle', ICON.shuffle, '랜덤 재생'], ['repeat', ICON.repeat, '반복 재생']].map(([m, icon, label]) => `
-                <button class="music-action ${M.active && M.playGroup === group && M.mode === m ? 'on' : ''}" data-act="play-${m}" ${tracks.length ? '' : 'disabled'}>${icon}<span>${label}</span></button>`).join('')}
+                <button class="music-action ${M.currentId && M.playGroup === group && M.mode === m ? 'on' : ''}" data-act="play-${m}" ${tracks.length ? '' : 'disabled'}>${icon}<span>${label}</span></button>`).join('')}
             </div>
             <div class="music-tracks">
                 ${tracks.map((t, i) => {
-                    const playing = t.id === M.currentId && M.active;
+                    const playing = t.id === M.currentId;
                     return `
                     <button class="music-track ${playing ? 'playing' : ''}" data-act="play-track" data-id="${t.id}">
                         <span class="music-track-no">${playing ? ICON.play : i + 1}</span>
@@ -183,7 +185,7 @@
         else if (act === 'play-shuffle') startPlay('shuffle');
         else if (act === 'play-repeat') startPlay('repeat');
         // 곡을 누르면 그 곡부터 재생 (한 곡 반복 중이면 누른 곡을 반복)
-        else if (act === 'play-track') startPlay(M.active && M.mode === 'repeat' ? 'repeat' : 'seq', el.dataset.id);
+        else if (act === 'play-track') startPlay(M.currentId && M.mode === 'repeat' ? 'repeat' : 'seq', el.dataset.id);
     });
 
     // 폰 폴더 지정: 고른 폴더 안의 음원 파일을 통째로 저장 (이전 폴더는 교체)
@@ -219,7 +221,7 @@
 
         try {
             if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); // 저장 공간이 임의로 지워지지 않게 요청
-            if (M.active) stopMusic();
+            if (M.currentId) stopMusic();
             const prevFolder = await getFolder();
             const key = (g, n) => `${g}/${n}`;
             const before = new Set((await getAllTracks()).map((x) => key(x.group, x.name)));
@@ -255,6 +257,10 @@
     }
 
     // ─── 재생 ──────────────────────────────────────────────────
+    // 라디오와 음악은 오디오 장치 하나를 번갈아 쓴다(동시 재생 없음).
+    // audioOwner(index.html): 지금 소리를 쥐고 있는 쪽 'radio' | 'music' | null
+    const owns = () => audioOwner === 'music';
+
     // 지금 화면에 열려 있는 하위 폴더 (화면 머리줄의 제목과 같음)
     const currentGroup = () => {
         const h = view.querySelector('.music-folder-head h3');
@@ -278,45 +284,60 @@
         if (!startId) showToast({ seq: '순차 재생', shuffle: '랜덤 재생', repeat: '한 곡 반복' }[mode]);
 
         // 반복 재생: 이 폴더의 곡을 듣고 있었다면 그 곡을 끊지 않고 이어서 반복
-        if (mode === 'repeat' && !startId && M.active && ids.includes(M.currentId)) {
+        if (mode === 'repeat' && !startId && owns() && ids.includes(M.currentId)) {
             M.mode = 'repeat';
             M.playlist = ids;
             M.idx = ids.indexOf(M.currentId);
             audio.loop = true;
-            freqDisplay.textContent = `${M.idx + 1}/${ids.length}`;
+            updatePlayerView();
             render();
             return;
         }
         M.mode = mode;
         M.playlist = ids;
-        audio.loop = mode === 'repeat'; // 한 곡 반복은 오디오 자체의 반복 기능을 사용(끊김 없음)
         playIndex(startId ? Math.max(0, ids.indexOf(startId)) : 0);
     }
 
-    async function playIndex(i) {
+    // i번째 곡을 불러와 재생. startAt(초)을 주면 그 위치부터(멈췄던 곳 이어 듣기)
+    async function playIndex(i, startAt = 0) {
         const n = M.playlist.length;
         if (!n) return stopMusic();
         M.idx = ((i % n) + n) % n;
         const t = await getTrack(M.playlist[M.idx]);
         if (!t) { M.playlist.splice(M.idx, 1); return playIndex(M.idx); }
 
-        enterMusicMode();
+        takeAudio();
         const old = M.objUrl;
         M.objUrl = URL.createObjectURL(t.blob);
         audio.src = M.objUrl;
         if (old) URL.revokeObjectURL(old);
+        audio.loop = M.mode === 'repeat'; // 한 곡 반복은 오디오 자체의 반복 기능(끊김 없음)
+        if (startAt > 0) {
+            // 이어 듣기: 곡을 지정하는 즉시 시작 위치를 정하고, 곡 정보가 읽힌 뒤 한 번 더 맞춤
+            try { audio.currentTime = startAt; } catch (e) {}
+            audio.addEventListener('loadedmetadata', () => {
+                if (Math.abs(audio.currentTime - startAt) > 1) { try { audio.currentTime = startAt; } catch (e) {} }
+            }, { once: true });
+        }
         M.currentId = t.id;
+        M.currentName = t.name;
+        M.savedTime = startAt;
+        M.savedDur = 0;
         resetProgress();
-
-        freqDisplay.textContent = `${M.idx + 1}/${n}`;
-        marquee(nameDisplay, t.name); // 플레이어의 곡 제목도 길면 흐르게
         playAudio();
         updateMediaSession(t);
+        updatePlayerView();
         render();
     }
 
+    // 음악 화면에서 재생을 누름: 라디오가 쥐고 있었다면 멈춘 곳부터 이어 듣기
+    function resumeMusic() {
+        if (!M.currentId || !M.playlist.length) return;
+        playIndex(M.idx, M.savedTime || 0);
+    }
+
     function next() {
-        if (!M.active || !M.playlist.length) return;
+        if (!M.playlist.length) return;
         // 랜덤 재생이 한 바퀴 돌면 순서를 새로 섞는다
         if (M.mode === 'shuffle' && M.idx === M.playlist.length - 1) {
             M.playlist = shuffle(M.playlist);
@@ -326,12 +347,51 @@
     }
 
     function prev() {
-        if (!M.active || !M.playlist.length) return;
-        if (audio.currentTime > 3) { audio.currentTime = 0; return; } // 3초 넘게 들었으면 처음부터
+        if (!M.playlist.length) return;
+        if (owns() && audio.currentTime > 3) { audio.currentTime = 0; return; } // 3초 넘게 들었으면 처음부터
         playIndex(M.idx - 1);
     }
 
-    audio.addEventListener('ended', () => { if (M.active) next(); });
+    audio.addEventListener('ended', () => { if (owns()) next(); });
+
+    // 소리를 음악이 가져옴: 라디오가 나오고 있었으면 멈춤(연결 시도·재시도도 무효화).
+    // 라디오의 마지막 방송(radioLast)은 그대로 남아 라디오 화면에서 이어 들을 수 있다.
+    function takeAudio() {
+        if (owns()) return;
+        loadToken++;
+        clearStallTimer();
+        if (currentHls) { try { currentHls.destroy(); } catch (e) {} currentHls = null; }
+        audioOwner = 'music';
+        setMediaHandlers(true);
+    }
+
+    // 라디오가 재생을 시작할 때(index.html의 loadStream) 호출: 음악은 위치를 기억하고 멈춤
+    window.musicYield = () => {
+        if (!owns()) return;
+        M.savedTime = audio.currentTime || 0;
+        M.savedDur = isFinite(audio.duration) ? audio.duration : 0;
+        audio.pause();
+        audio.loop = false;
+        if (M.objUrl) { URL.revokeObjectURL(M.objUrl); M.objUrl = null; }
+        setMediaHandlers(false);
+        audioOwner = null;
+    };
+
+    // 폴더를 바꾸거나 지울 때: 음악을 완전히 정리
+    function stopMusic() {
+        if (owns()) {
+            pauseAudio();
+            audio.removeAttribute('src');
+            audio.load();
+            audioOwner = null;
+            setMediaHandlers(false);
+        }
+        audio.loop = false;
+        if (M.objUrl) { URL.revokeObjectURL(M.objUrl); M.objUrl = null; }
+        M.currentId = null; M.currentName = ''; M.idx = -1; M.playlist = []; M.savedTime = 0; M.savedDur = 0;
+        updatePlayerView();
+        render();
+    }
 
     // ─── 진행 막대: 현재 시간 ━━●── 전체 길이, 끌거나 눌러서 원하는 위치로 이동 ───
     const seek = document.getElementById('music-seek');
@@ -348,8 +408,9 @@
         seek.value = Math.round(ratio * 1000);
         seek.style.setProperty('--pct', `${(ratio * 100).toFixed(2)}%`); // 재생된 부분 채우기
     };
+    const curDur = () => (owns() ? audio.duration : M.savedDur);
     function updateProgress() {
-        if (!M.active || dragging) return;
+        if (!owns() || dragging) return;
         const d = audio.duration;
         timeDur.textContent = fmt(d);
         timeCur.textContent = fmt(audio.currentTime);
@@ -357,19 +418,29 @@
         updatePositionState();
     }
     ['timeupdate', 'durationchange', 'loadedmetadata', 'seeked'].forEach((ev) => audio.addEventListener(ev, updateProgress));
+    // 라디오가 소리를 쥐고 있을 때: 음악이 멈춘 위치를 보여줌
+    function showSavedProgress() {
+        const d = M.savedDur;
+        timeCur.textContent = fmt(M.savedTime);
+        timeDur.textContent = fmt(d);
+        setBar(d > 0 ? Math.min(1, M.savedTime / d) : 0);
+    }
 
     // 끄는 중에는 시간만 미리 보여주고, 손을 떼면 그 위치로 이동
     seek.addEventListener('input', () => {
         dragging = true;
         const ratio = seek.value / 1000;
         seek.style.setProperty('--pct', `${(ratio * 100).toFixed(2)}%`);
-        timeCur.textContent = fmt(ratio * (audio.duration || 0));
+        timeCur.textContent = fmt(ratio * (curDur() || 0));
     });
     seek.addEventListener('change', () => {
-        const d = audio.duration;
-        if (M.active && isFinite(d) && d > 0) audio.currentTime = (seek.value / 1000) * d;
+        const d = curDur();
+        if (isFinite(d) && d > 0) {
+            if (owns()) audio.currentTime = (seek.value / 1000) * d;
+            else M.savedTime = (seek.value / 1000) * d; // 멈춰 있으면 이어 들을 위치만 바꿈
+        }
         dragging = false;
-        updateProgress();
+        if (owns()) updateProgress(); else showSavedProgress();
     });
     function resetProgress() { timeCur.textContent = '0:00'; timeDur.textContent = '0:00'; setBar(0); }
 
@@ -386,83 +457,87 @@
     // 재생할 수 없는 곡(예: 안드로이드가 못 여는 애플 무손실 m4a)은 알리고 다음 곡으로.
     // 폴더 전체가 재생 불가면 무한히 넘기지 않도록 연속 실패 횟수를 센다.
     let failStreak = 0;
-    audio.addEventListener('playing', () => { if (M.active) failStreak = 0; });
+    audio.addEventListener('playing', () => { if (owns()) failStreak = 0; });
     audio.addEventListener('error', () => {
-        if (!M.active || !audio.src.startsWith('blob:')) return;
+        if (!owns() || !audio.src.startsWith('blob:')) return;
         failStreak++;
-        const name = nameDisplay.textContent;
         if (failStreak >= M.playlist.length) {
             showToast('이 폴더의 곡을 재생할 수 없습니다 (지원하지 않는 형식)');
             failStreak = 0;
             return stopMusic();
         }
-        showToast(`재생할 수 없는 파일: ${name}`);
+        showToast(`재생할 수 없는 파일: ${M.currentName}`);
         next();
     });
     document.getElementById('music-prev').addEventListener('click', prev);
     document.getElementById('music-next').addEventListener('click', next);
 
-    // 라디오를 멈추고 음악 모드로 전환
-    function enterMusicMode() {
-        if (M.active) return;
-        loadToken++;                       // 진행 중이던 라디오 연결 시도·재시도를 모두 무효화
-        clearStallTimer();
-        if (currentHls) { try { currentHls.destroy(); } catch (e) {} currentHls = null; }
-        lastLoadedStation = null;          // 라디오 끊김 자동 재연결이 음악을 덮어쓰지 않게
-        if (activeStationId !== null) { activeStationId = null; renderStations(); }
-        M.active = true;
-        document.body.classList.add('music-mode');
-        document.body.classList.remove('music-idle');
-        setLampLabel('MUSIC');
-        setMediaHandlers(true);
+    // ─── 위쪽 플레이어 표시: 화면별로 완전히 분리 ───
+    // 음악 화면 → 항상 음악(마지막 곡·위치), 라디오 화면 → 항상 라디오(마지막 방송).
+    // 재생 버튼·램프·재생/일시정지 아이콘도 그 화면의 소리 기준으로 표시한다.
+    function setName(text, flow) {
+        if (flow && nameDisplay.dataset.mq === text) return; // 같은 곡이면 흐르는 중인 제목을 그대로 둠
+        nameDisplay.dataset.mq = flow ? text : '';
+        if (flow) marquee(nameDisplay, text);
+        else { nameDisplay.classList.remove('marquee'); nameDisplay.textContent = text; }
     }
+    function updatePlayerView() {
+        const onMusic = currentPage === 'music';
+        const body = document.body;
+        body.classList.toggle('music-mode', onMusic);
+        const mine = onMusic ? owns() : audioOwner === 'radio';     // 지금 나오는 소리가 이 화면 것인가
+        const playingHere = mine && !audio.paused; // 오디오의 실제 상태 기준
 
-    // 음악 모드 종료 (라디오 재생이 시작될 때 index.html의 loadStream에서 호출)
-    function exitMusicMode() {
-        if (!M.active) return;
-        nameDisplay.classList.remove('marquee'); // 라디오 방송명은 흐르지 않게
-        audio.loop = false; // 라디오에 반복 설정이 남지 않게
-        M.active = false;
-        M.currentId = null;
-        M.idx = -1;
-        document.body.classList.remove('music-mode');
-        setLampLabel('ON AIR');
-        setMediaHandlers(false);
-        if (M.objUrl) { URL.revokeObjectURL(M.objUrl); M.objUrl = null; }
-        render();
-    }
-    window.exitMusicMode = exitMusicMode;
-
-    // 폴더를 바꿀 때 재생 중이던 음악을 멈춤
-    function stopMusic() {
-        if (!M.active) return;
-        pauseAudio();
-        audio.removeAttribute('src');
-        audio.load();
-        exitMusicMode();
-        updateIdle();
-    }
-
-    // ─── 아무것도 재생하지 않을 때의 플레이어 표시 ───
-    // 음악 화면이면 '♪ / 곡을 선택하세요', 다른 화면이면 라디오 대기 화면.
-    // 라디오를 듣는 중(또는 멈춰 둔 방송이 있음)이면 어느 화면이든 라디오 정보를 그대로 둔다.
-    const radioInUse = () => activeStationId !== null || !!currentHls || !!lastLoadedStation;
-    function updateIdle() {
-        if (M.active || radioInUse()) { document.body.classList.remove('music-idle'); return; }
-        if (currentPage === 'music') {
-            document.body.classList.add('music-idle');
-            freqDisplay.textContent = '♪';
-            nameDisplay.textContent = '곡을 선택하세요';
+        if (onMusic) {
             setLampLabel('MUSIC');
+            if (M.currentId) {
+                body.classList.remove('music-idle');
+                freqDisplay.textContent = `${M.idx + 1}/${M.playlist.length}`;
+                setName(M.currentName, true);
+                if (!owns()) showSavedProgress();
+            } else {
+                body.classList.add('music-idle');
+                freqDisplay.textContent = '♪';
+                setName('곡을 선택하세요', false);
+                resetProgress();
+            }
         } else {
-            document.body.classList.remove('music-idle');
-            freqDisplay.textContent = '--.-';
-            nameDisplay.textContent = '채널을 선택하세요';
+            body.classList.remove('music-idle');
             setLampLabel('ON AIR');
+            if (radioLast) {
+                freqDisplay.textContent = radioLast.freqText || '--.-';
+                setName(radioLast.name || '', false);
+            } else {
+                freqDisplay.textContent = '--.-';
+                setName('채널을 선택하세요', false);
+            }
         }
+        playIcon.style.display = playingHere ? 'none' : 'block';
+        pauseIcon.style.display = playingHere ? 'block' : 'none';
+        if (onAir) onAir.classList.toggle('live', playingHere);
+        // 다른 화면의 소리가 나오는 중이면 시각화를 흐리게
+        body.classList.toggle('other-audio', !audio.paused && !mine);
+    }
+    window.updatePlayerView = updatePlayerView;
+    // 재생·정지가 실제로 일어날 때마다 표시 갱신 (재생 확정 통보가 늦게 와도 버튼·램프가 맞게)
+    ['play', 'playing', 'pause', 'emptied'].forEach((ev) => audio.addEventListener(ev, () => updatePlayerView()));
+
+    // 가운데 재생 버튼: 음악 화면에서는 음악을 조작 (index.html의 togglePlay가 먼저 물어봄)
+    window.musicHandlesPlay = () => {
+        if (currentPage !== 'music') return false;
+        if (owns()) { if (!audio.paused) pauseAudio(); else playAudio(); }
+        else if (M.currentId) resumeMusic();
+        else startFromIdle();
+        return true;
+    };
+    async function startFromIdle() {
+        const group = currentGroup();
+        const tracks = group !== null ? await getTracks(group) : [];
+        if (tracks.length) startPlay('seq');
+        else showToast(await getFolder() ? '폴더를 열고 곡을 고르세요' : '먼저 폰 폴더를 지정하세요');
     }
 
-    // 화면을 넘길 때마다 대기 표시 갱신
+    // 화면을 넘길 때마다 위쪽 플레이어를 그 화면 기준으로 다시 표시
     const origShowPage = window.showPage;
     window.showPage = (id) => {
         origShowPage(id);
@@ -470,18 +545,8 @@
         document.body.dataset.page = id;
         // 시각화 띠 높이가 바뀌므로 캔버스 크기를 다시 맞춤
         if (typeof resizeCanvas === 'function') setTimeout(resizeCanvas, 50);
-        updateIdle();
+        updatePlayerView();
     };
-
-    // 음악 대기 화면에서 가운데 재생 버튼 → 열어 둔 폴더를 순차 재생
-    document.getElementById('play-btn').addEventListener('click', async (e) => {
-        if (!document.body.classList.contains('music-idle')) return; // 그 밖의 경우는 원래 재생/일시정지
-        e.stopImmediatePropagation();
-        const group = currentGroup();
-        const tracks = group !== null ? await getTracks(group) : [];
-        if (tracks.length) startPlay('seq');
-        else showToast(await getFolder() ? '폴더를 열고 곡을 고르세요' : '먼저 폰 폴더를 지정하세요');
-    }, true); // 캐처 단계: 라디오의 재생 처리보다 먼저
 
     function setLampLabel(text) {
         const lamp = document.getElementById('on-air');
@@ -507,7 +572,7 @@
         set('pause', pauseAudio);
         set('nexttrack', next);
         set('previoustrack', prev);
-        set('seekto', (d) => { if (M.active && d && isFinite(d.seekTime)) audio.currentTime = d.seekTime; });
+        set('seekto', (d) => { if (owns() && d && isFinite(d.seekTime)) audio.currentTime = d.seekTime; });
         if (!on) navigator.mediaSession.metadata = null;
     }
 

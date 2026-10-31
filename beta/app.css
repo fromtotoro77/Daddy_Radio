@@ -1505,3 +1505,10 @@ body[data-page="music"]:not(.music-mode) .music-nav-btn { opacity: 0.3; pointer-
 /* 곡 제목/방송명 줄: 항상 한 줄 높이 (길면 말줄임·흐름) */
 #current-name { max-width: 80vw; }
 #current-name-text { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* 화면별 분리: 음악 화면에서 아직 곡을 고르지 않았으면 진행 막대·이전/다음을 흐리게(눌러지지 않게) */
+body.music-idle .music-progress,
+body.music-idle .music-nav-btn { opacity: 0.3; pointer-events: none; }
+/* 다른 화면의 소리가 나오는 중이면 시각화를 흐리게 (이 화면 소리가 아님을 표시) */
+.visualizer-container { transition: opacity 0.3s; }
+body.other-audio .visualizer-container { opacity: 0.15; }
