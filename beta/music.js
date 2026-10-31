@@ -115,13 +115,16 @@
                 <button class="music-action" data-act="play-seq" ${tracks.length ? '' : 'disabled'}>${ICON.play}<span>순차 재생</span></button>
                 <button class="music-action" data-act="play-shuffle" ${tracks.length ? '' : 'disabled'}>${ICON.shuffle}<span>랜덤 재생</span></button>
             </div>
-            ${tracks.map((t, i) => `
-                <div class="station-card ${t.id === M.currentId && M.active ? 'active' : ''}" data-act="play-track" data-id="${t.id}">
-                    <div class="station-badge">${i + 1}</div>
-                    <div class="flex-grow min-w-0">
-                        <h3 class="font-semibold text-zinc-100 truncate">${esc(t.name)}</h3>
-                    </div>
-                </div>`).join('')}`;
+            <div class="music-tracks">
+                ${tracks.map((t, i) => {
+                    const playing = t.id === M.currentId && M.active;
+                    return `
+                    <button class="music-track ${playing ? 'playing' : ''}" data-act="play-track" data-id="${t.id}">
+                        <span class="music-track-no">${playing ? ICON.play : i + 1}</span>
+                        <span class="music-track-name">${esc(t.name)}</span>
+                    </button>`;
+                }).join('')}
+            </div>`;
     }
 
     // ─── 사용자 동작 ────────────────────────────────────────────

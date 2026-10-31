@@ -1326,3 +1326,60 @@ body.music-mode #current-name {
   text-underline-offset: 3px;
   cursor: pointer;
 }
+
+/* 폴더 안 곡 목록: 촘촘한 한 줄 목록 (한 줄 약 44px) */
+.music-tracks {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.music-track {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 6px;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.music-track:active { background: rgba(255, 255, 255, 0.05); }
+.music-track-no {
+  flex: none;
+  width: 24px;
+  display: inline-flex;
+  justify-content: flex-end;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.music-track-no svg { width: 14px; height: 14px; }
+.music-track-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: rgba(244, 244, 245, 0.85);
+}
+/* 재생 중인 곡: 번호 자리에 재생 표시(빨강), 제목 밝게 */
+.music-track.playing .music-track-no { color: var(--brand-accent); }
+.music-track.playing .music-track-name { color: #fff; font-weight: 700; }
+
+/* 순차/랜덤 버튼: 아이콘+글자를 한 줄로, 높이를 줄여 곡 목록 공간 확보 */
+.music-action {
+  flex-direction: row;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 4px;
+  font-size: 13px;
+}
+.music-action svg { width: 16px; height: 16px; }
