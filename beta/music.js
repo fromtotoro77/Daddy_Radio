@@ -5,7 +5,7 @@
  *   하위 폴더를 열어 '순차 재생' 또는 '랜덤 재생'. 곡을 누르면 그 곡부터 순차 재생.
  *   (앱 저장소(IndexedDB)에 보관 → 앱을 다시 열어도 유지, '폴더 변경'으로 다른 폴더로 교체)
  * - 라디오와 같은 오디오 장치·재생 버튼·시각화를 함께 쓴다.
- *   라디오 쪽 전역(audio, playAudio, pauseAudio, loadToken, currentHls ...)은 index.html에 정의돼 있다.
+ *   라디오 쪽 전역(audio, playAudio, pauseAudio, loadToken, currentHls, esc ...)은 index.html에 정의돼 있다.
  */
 (() => {
     // ─── 저장소(IndexedDB) ─────────────────────────────────────
@@ -30,7 +30,7 @@
         r.onerror = () => reject(r.error);
     });
     const done = (t) => new Promise((resolve, reject) => { t.oncomplete = resolve; t.onerror = () => reject(t.error); });
-    const store = (name, mode = 'readonly') => db.transaction(name, mode).objectStore(name);
+    const store = (name) => db.transaction(name, 'readonly').objectStore(name); // 읽기 전용 (쓰기는 importPicked에서 직접)
     const byName = (a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true });
 
     const getFolder = () => asPromise(store('folder').get('current'));
@@ -56,8 +56,6 @@
     const view = document.getElementById('music-view');
     const fileInput = document.getElementById('music-file-input');    // 폴더째 고르기
     const filesInput = document.getElementById('music-files-input');  // 곡 직접 고르기
-
-    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
     const ICON = {
         play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
@@ -544,7 +542,7 @@
         // 음악 페이지에서는 플레이어를 줄여 목록을 넓게 (CSS: body[data-page="music"])
         document.body.dataset.page = id;
         // 시각화 띠 높이가 바뀌므로 캔버스 크기를 다시 맞춤
-        if (typeof resizeCanvas === 'function') setTimeout(resizeCanvas, 50);
+        setTimeout(resizeCanvas, 50);
         updatePlayerView();
     };
 
