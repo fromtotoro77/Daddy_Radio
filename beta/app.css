@@ -1474,3 +1474,15 @@ body.music-mode #current-name-text {
   .mq-inner > span + span { display: none; }
   .marquee { text-overflow: ellipsis !important; }
 }
+
+/* 음악 화면 대기 상태: ♪ / 곡을 선택하세요 (MHz 숨김) */
+body.music-idle .freq-unit { display: none; }
+
+/* 음악 페이지: 플레이어를 줄이고 곡 목록 공간을 넓게 */
+body[data-page="music"] #player-controls-ui { padding-top: 8px; padding-bottom: 10px; gap: 10px; }
+body[data-page="music"] .visualizer-container { height: 64px; }
+body[data-page="music"] #current-freq { font-size: 2.1rem; line-height: 1.1; }
+body[data-page="music"] #play-btn { width: 64px; height: 64px; }
+body[data-page="music"] #play-btn svg { width: 26px; height: 26px; }
+body[data-page="music"] .music-nav-btn { width: 44px; height: 44px; padding: 11px; }
+body[data-page="music"] #page-music { padding-top: 8px; }

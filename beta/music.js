@@ -400,6 +400,7 @@
         if (activeStationId !== null) { activeStationId = null; renderStations(); }
         M.active = true;
         document.body.classList.add('music-mode');
+        document.body.classList.remove('music-idle');
         setLampLabel('MUSIC');
         setMediaHandlers(true);
     }
@@ -427,9 +428,48 @@
         audio.removeAttribute('src');
         audio.load();
         exitMusicMode();
-        freqDisplay.textContent = '--.-';
-        nameDisplay.textContent = '채널을 선택하세요';
+        updateIdle();
     }
+
+    // ─── 아무것도 재생하지 않을 때의 플레이어 표시 ───
+    // 음악 화면이면 '♪ / 곡을 선택하세요', 다른 화면이면 라디오 대기 화면.
+    // 라디오를 듣는 중(또는 멈춰 둔 방송이 있음)이면 어느 화면이든 라디오 정보를 그대로 둔다.
+    const radioInUse = () => activeStationId !== null || !!currentHls || !!lastLoadedStation;
+    function updateIdle() {
+        if (M.active || radioInUse()) { document.body.classList.remove('music-idle'); return; }
+        if (currentPage === 'music') {
+            document.body.classList.add('music-idle');
+            freqDisplay.textContent = '♪';
+            nameDisplay.textContent = '곡을 선택하세요';
+            setLampLabel('MUSIC');
+        } else {
+            document.body.classList.remove('music-idle');
+            freqDisplay.textContent = '--.-';
+            nameDisplay.textContent = '채널을 선택하세요';
+            setLampLabel('ON AIR');
+        }
+    }
+
+    // 화면을 넘길 때마다 대기 표시 갱신
+    const origShowPage = window.showPage;
+    window.showPage = (id) => {
+        origShowPage(id);
+        // 음악 페이지에서는 플레이어를 줄여 목록을 넓게 (CSS: body[data-page="music"])
+        document.body.dataset.page = id;
+        // 시각화 띠 높이가 바뀌므로 캔버스 크기를 다시 맞춤
+        if (typeof resizeCanvas === 'function') setTimeout(resizeCanvas, 50);
+        updateIdle();
+    };
+
+    // 음악 대기 화면에서 가운데 재생 버튼 → 열어 둔 폴더를 순차 재생
+    document.getElementById('play-btn').addEventListener('click', async (e) => {
+        if (!document.body.classList.contains('music-idle')) return; // 그 밖의 경우는 원래 재생/일시정지
+        e.stopImmediatePropagation();
+        const group = currentGroup();
+        const tracks = group !== null ? await getTracks(group) : [];
+        if (tracks.length) startPlay('seq');
+        else showToast(await getFolder() ? '폴더를 열고 곡을 고르세요' : '먼저 폰 폴더를 지정하세요');
+    }, true); // 캐처 단계: 라디오의 재생 처리보다 먼저
 
     function setLampLabel(text) {
         const lamp = document.getElementById('on-air');
