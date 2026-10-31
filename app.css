@@ -17,8 +17,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* 배경: near-black + 은은한 화이트 글로우로 깊이감 (모노) */
 body {
   background-color: var(--primary-bg);
+  background-image:
+    radial-gradient(900px 620px at 15% -6%, rgba(255, 255, 255, 0.05), transparent 55%),
+    radial-gradient(760px 640px at 92% 108%, rgba(255, 255, 255, 0.03), transparent 55%);
   color: var(--text-main);
   font-family: var(--font-main);
   -webkit-font-smoothing: antialiased;
@@ -45,7 +49,20 @@ html {
   position: relative;
 }
 
+main {
+  z-index: 10;
+}
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ─── 페이지 전환 ─────────────────────────────────────────── */
 .page {
   display: none;
   flex-direction: column;
@@ -53,20 +70,6 @@ html {
   width: 100%;
 }
 
-/* Page-specific scroll adjustments */
-.main-scrollable {
-  height: auto !important;
-  overflow-y: auto !important;
-  display: flex !important; /* display: flex 유지 */
-}
-
-.main-scrollable .page.active {
-  display: flex !important; /* block에서 flex로 변경하여 일관성 유지 */
-  height: auto !important;
-  overflow: visible !important;
-}
-
-/* .page.active */
 .page.active {
   display: flex;
   animation: slideIn 0.3s ease-out forwards;
@@ -77,47 +80,35 @@ html {
   to { opacity: 1; transform: translateX(0); }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+/* 방송 목록 페이지: 플레이어를 숨기고 목록만 스크롤 */
+.main-scrollable {
+  height: auto !important;
+  overflow-y: auto !important;
+  display: flex !important;
 }
 
+.main-scrollable .page.active {
+  display: flex !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* ─── 머리줄: 로고 + 시계 ─────────────────────────────────── */
 header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.5rem 0.5rem 1.5rem; /* Reduced top padding */
 }
 
 .logo {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0; /* Tightened gap */
+  gap: 0;
 }
 
-.logo-text {
-  font-family: var(--font-main);
-  font-weight: 800;
-  font-size: 1.2rem; /* Reduced size as requested */
-  letter-spacing: 0.15em;
-  color: var(--text-dim); /* Slightly dimmer to make clock stand out */
-  line-height: 1;
-  text-transform: uppercase;
-  background: none;
-  -webkit-text-fill-color: var(--text-dim);
-}
-
-.header-clock {
-  font-family: var(--font-mono);
-  font-size: 2rem; /* Even larger size per user request */
-  font-weight: 700;
-  color: var(--brand-primary);
-  letter-spacing: 0.1em;
-  opacity: 1;
-  padding-left: 1px;
-  line-height: 1;
-}
+/* 상단 시계: 자릿수 정렬, 콜론 깜빡임 */
+#header-clock { font-variant-numeric: tabular-nums; }
 
 .blink-colon {
   animation: blink-anim 1s step-end infinite;
@@ -128,446 +119,7 @@ header {
   50% { opacity: 0; }
 }
 
-.btn-top {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.6rem;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.btn-top svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  fill: var(--text-main);
-}
-
-.btn-top:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-  border-color: var(--brand-primary);
-}
-
-.btn-top.spinning svg {
-  animation: rotate 1s linear infinite;
-  fill: var(--brand-primary);
-}
-
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.header-btns {
-  position: absolute;
-  right: 0;
-  display: flex;
-  gap: 0.25rem;
-}
-
-/* Player Section */
-.player-card {
-  background: var(--surface-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 2.5rem 2rem;
-  margin: 0.25rem 0 0.75rem 0; /* Tightened gap to next section */
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
-  position: relative; /* Base for absolute btn */
-  overflow: hidden;
-  z-index: 10;
-}
-
-.btn-card-viz {
-  position: absolute;
-  top: 1.5rem;
-  right: 1.5rem;
-  z-index: 20;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  color: var(--text-dim);
-}
-
-.btn-card-viz svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  fill: currentColor;
-}
-
-.btn-card-viz:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--brand-primary);
-  border-color: var(--brand-primary);
-}
-
-.visualizer-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  image-rendering: auto;
-}
-
-.player-card::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: conic-gradient(from 0deg, transparent, var(--brand-primary), transparent 60%);
-  opacity: 0.05;
-  animation: rotate 10s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.tuner-display {
-  text-align: center;
-  z-index: 1;
-}
-
-.current-freq {
-  font-size: 3.5rem;
-  font-weight: 900;
-  font-family: 'Pretendard', 'Inter', -apple-system, sans-serif;
-  background: linear-gradient(to bottom, #fff, #cbd5e1);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  line-height: 1;
-  letter-spacing: -0.05em;
-  transition: all 0.3s ease;
-}
-
-.current-freq.is-digital {
-  font-size: 2.8rem;
-  letter-spacing: 0.1em;
-  font-weight: 800;
-  background: linear-gradient(to right, #fff, var(--brand-primary));
-  background-clip: text;
-  -webkit-background-clip: text;
-}
-
-.current-name {
-  font-size: 1.1rem;
-  color: var(--text-dim);
-  margin-top: 0.5rem;
-}
-
-.controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2rem;
-  z-index: 1;
-}
-
-.btn-play {
-  width: 4.5rem;
-  height: 4.5rem;
-  border-radius: 50%;
-  background: var(--brand-primary);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.btn-play:active {
-  transform: scale(0.9);
-}
-
-.btn-play svg {
-  width: 2rem;
-  height: 2rem;
-  fill: #0f172a;
-}
-
-/* Station List */
-.station-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-}
-
-.favorites-section {
-  width: 100%;
-}
-
-.section-header {
-  margin-bottom: 0.5rem; /* Standardized tight gap for all sections */
-  padding-left: 0.5rem;
-}
-
-.section-header h2 {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--text-dim);
-  letter-spacing: 0.1em;
-}
-
-.empty-favorites {
-  grid-column: span 2;
-  text-align: center;
-  padding: 3rem 1rem;
-  color: var(--text-dim);
-  font-size: 0.9rem;
-  line-height: 1.6;
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-  border-radius: 1.5rem;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-/* Unified Station Card Style */
-.station-card {
-  background: var(--surface-bg);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  padding: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.station-card:hover {
-  background: rgba(255, 255, 255, 0.05);
-  transform: translateY(-2px);
-}
-
-.station-card.active {
-  border-color: var(--brand-primary);
-  background: rgba(99, 102, 241, 0.1);
-}
-
-/* 방송사 라벨 뱃지 스타일 */
-.station-badge {
-  position: relative; /* 안쪽 상단에 빨간 점(폴백 표시)을 얹기 위한 기준 */
-  flex-shrink: 0;
-  width: 3.5rem;
-  height: 3.5rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  color: var(--brand-primary);
-  font-weight: 700;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.station-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.25rem;
-}
-
-/* Custom Animations from Stitch */
-@keyframes wave {
-    0%, 100% { height: 10px; }
-    50% { height: 40px; }
-}
-
-.wave-bar-animation {
-    animation: wave 1s ease-in-out infinite;
-}
-
-/* Base Styles */
-body {
-    -webkit-tap-highlight-color: transparent;
-    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background-color: var(--brand-dark);
-}
-
-.no-scrollbar::-webkit-scrollbar {
-    display: none;
-}
-
-.no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
-
-/* Page Transitions */
-.page {
-    display: none;
-}
-
-/* 중복 정의된 block 스타일 삭제 (flex 레이아웃 유지) */
-.page.active {
-    display: flex;
-}
-
-/* Toast Styles */
-.toast-container {
-    position: fixed;
-    bottom: 100px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1000;
-    width: 90%;
-    max-width: 400px;
-}
-
-.toast {
-    background: rgba(23, 23, 26, 0.94);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
-    padding: 12px 24px;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 600;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-    pointer-events: none;
-    animation: toast-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-
-.toast.success {
-  border-left: 3px solid var(--brand-primary);
-}
-
-.toast.has-action {
-  pointer-events: auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.toast-action {
-  flex-shrink: 0;
-  padding: 4px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 999px;
-  background: transparent;
-  color: inherit;
-  font-weight: 700;
-  font-size: 0.85em;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.toast-action:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.8);
-}
-
-/* Reload button — minimal rounded-square icon in section headers */
-.reload-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 10px;
-  border: none;
-  background: transparent;
-  color: var(--text-dim);
-  opacity: 0.7;
-  cursor: pointer;
-  border-radius: 10px;
-  transition: opacity 0.2s, color 0.2s, background 0.2s, transform 0.15s;
-  -webkit-tap-highlight-color: transparent;
-  flex-shrink: 0;
-}
-.reload-btn svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-.reload-btn:hover {
-  opacity: 1;
-  color: var(--brand-primary);
-  background: rgba(255, 255, 255, 0.10);
-}
-.reload-btn:active {
-  transform: scale(0.9);
-  opacity: 1;
-  color: #fff;
-}
-.reload-btn.spinning svg {
-  animation: reload-spin 0.9s linear infinite;
-}
-@keyframes reload-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* Attention pulse — 재생 실패 시 사용자에게 알림 */
-.reload-btn.attention {
-  color: var(--brand-accent);
-  opacity: 1;
-  animation: reload-pulse 1.2s ease-in-out infinite;
-}
-.reload-btn.attention:hover {
-  color: var(--brand-accent);
-  background: rgba(244, 63, 94, 0.15);
-}
-@keyframes reload-pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-    filter: drop-shadow(0 0 0 rgba(244, 63, 94, 0));
-  }
-  50% {
-    opacity: 0.5;
-    transform: scale(1.1);
-    filter: drop-shadow(0 0 6px rgba(244, 63, 94, 0.75));
-  }
-}
-
-@keyframes toast-in {
-  from { opacity: 0; transform: translateY(-20px) scale(0.9); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes toast-out {
-  from { opacity: 1; transform: translateY(0) scale(1); }
-  to { opacity: 0; transform: translateY(-20px) scale(0.9); }
-}
-
-.station-freq {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--brand-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
+/* ─── 플레이어 ────────────────────────────────────────────── */
 /* ON AIR 램프 — 항상 표시. 기본은 회색(꺼짐), 재생 중 .live 로 빨간 점등 */
 .on-air {
   display: inline-flex;
@@ -604,530 +156,68 @@ body {
 .on-air.live i {
   background: var(--brand-accent);
   box-shadow: 0 0 8px var(--brand-accent);
-  animation: reload-pulse 1.6s ease-in-out infinite;
+  animation: lamp-pulse 1.6s ease-in-out infinite;
+}
+@keyframes lamp-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 rgba(244, 63, 94, 0));
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 6px rgba(244, 63, 94, 0.75));
+  }
 }
 
-/* 주파수 옆 MHz 단위 — 작고 은은하게 */
-.freq-unit {
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  color: var(--text-dim);
-  -webkit-text-fill-color: var(--text-dim);
-  margin-left: 6px;
+/* 시각화: 배경 전체가 아니라 전용 띠(band)로 — 주파수/버튼과 겹치지 않게 */
+.visualizer-container {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s;
 }
 
-/* 2차 후보(공식 폴백)가 있는 방송 표시용 빨간 점 — 주파수 배지 안쪽 상단 */
-.fallback-dot {
+/* 파동 모드: 가운데 대칭 막대 */
+.visualizer-glow-layer {
   position: absolute;
-  top: 5px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #ef4444;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.85);
-}
-
-.station-name {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: #fff;
-}
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--glass-border);
-  border-radius: 10px;
-}
-
-/* Custom URL Section */
-.custom-url-section {
-  padding: 1.5rem;
-  margin-top: 1rem;
-  border-radius: 1.5rem;
-  gap: 1rem;
-}
-
-.custom-url-header {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-secondary);
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
   width: 100%;
-}
-
-.custom-url-input-group {
-  display: flex;
-  width: 100%;
-  gap: 0.5rem;
-}
-
-.custom-url-input-group input {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
-  border-radius: 0.75rem;
-  padding: 0.75rem 1rem;
-  color: #fff;
-  font-size: 0.9rem;
-  outline: none;
-}
-
-.custom-url-input-group input:focus {
-  border-color: var(--brand-primary);
-}
-
-.custom-url-input-group button {
-  background: var(--brand-primary);
-  color: #0f172a;
-  border: none;
-  border-radius: 0.75rem;
-  padding: 0 1.25rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.custom-url-input-group button:active {
-  opacity: 0.8;
-}
-
-/* Search Section Refinement */
-.search-results-container {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-  width: 100%;
-}
-
-.search-result-item-card {
-  background: var(--card-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 10px; /* Matched with favorite items */
-  padding: 1rem 1.25rem;
+  height: 70%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  transition: all 0.2s ease;
-  cursor: pointer;
+  justify-content: space-evenly;
+  padding: 0;
 }
 
-.search-result-item-card:hover {
-  background: rgba(255, 255, 255, 0.05);
-  transform: translateY(-2px);
-  border-color: rgba(56, 189, 248, 0.3);
+.glow-line {
+  width: 4px;
+  background: linear-gradient(to bottom, #e4e4e7, #a1a1aa, #71717a); /* Soft Mono 파형 */
+  border-radius: 20px;
+  will-change: height, opacity;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+  opacity: 0.85;
 }
 
-
-.btn-preview-circle {
-  width: 2.8rem;
-  height: 2.8rem;
-  border-radius: 50%; /* Unified to circles as requested */
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  color: #fff;
-}
-
-.btn-fav-toggle {
-  width: 2.5rem;
-  height: 2.5rem;
-  background: none;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 0; /* Align fix */
-}
-
-.sr-actions {
-  display: flex;
-  align-items: center; /* Vertical center alignment for heart and circle */
-  gap: 0.75rem;
-}
-
-.btn-preview-circle svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  fill: currentColor;
-}
-
-.btn-fav-toggle svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  fill: rgba(255, 255, 255, 0.25); /* More visible ghost fill */
-  stroke: #fff;
-  stroke-width: 2.2px;
-  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
-}
-
-
-.btn-preview-circle:hover {
-  background: var(--brand-primary);
-  transform: scale(1.1);
-  color: #0f172a;
-}
-
-.btn-fav-toggle:hover {
-  transform: scale(1.2);
-}
-
-.btn-fav-toggle.active svg {
-  fill: var(--brand-accent);
-  stroke: var(--brand-accent);
-  filter: drop-shadow(0 0 6px var(--brand-accent));
-}
-
-/* Modal */
-.modal {
-  position: fixed;
+/* 캔버스 모드(미러라인·고리·사이버·모노·코스믹) */
+.visualizer-canvas {
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(8px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1.5rem;
+  pointer-events: none;
+  image-rendering: auto;
 }
-
-.modal-content {
-  background: var(--bg-color);
-  border: 1px solid var(--glass-border);
-  border-radius: 2rem;
-  width: 100%;
-  max-width: 400px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: var(--glass-shadow);
-}
-
-.modal-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--glass-border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h2 {
-  font-size: 1.2rem;
-  color: var(--brand-primary);
-}
-
-.close-modal {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 2rem;
-  cursor: pointer;
-}
-
-.auto-results-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0.5rem;
-}
-
-/* Search View */
-.btn-primary-action {
-  width: 100%;
-  background: var(--brand-primary);
-  color: #0f172a;
-  border: none;
-  border-radius: 1.25rem;
-  padding: 1.25rem;
-  font-size: 1rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 10px 20px rgba(56, 189, 248, 0.2);
-}
-
-.btn-primary-action svg {
-  width: 1.5rem;
-  height: 1.5rem;
-  fill: #0f172a;
-}
-
-.btn-primary-action:active {
-  transform: scale(0.95);
-}
-
-.search-results-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.search-guide {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  line-height: 1.6;
-}
-
-.search-result-item-card {
-  background: var(--card-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 1.25rem;
-  padding: 1rem 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  transition: all 0.2s ease;
-}
-
-.search-result-item-card:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-
-
-.nav-item {
-  flex: 1;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.4); /* Dim white for inactive */
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.nav-item svg {
-  width: 1.75rem;
-  height: 1.75rem;
-  fill: currentColor;
-  transition: transform 0.3s ease;
-}
-
-.nav-item span {
-  display: none; /* Remove English text as requested */
-}
-
-.nav-item svg {
-  width: 2rem !important; /* Larger icons */
-  height: 2rem !important;
-  fill: currentColor;
-  transition: transform 0.3s ease;
-}
-
-.nav-item.active {
-  color: #ffffff; /* Pure white for active */
-}
-
-.nav-item.active svg {
-  transform: translateY(-2px);
-  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
-}
-
-.nav-item.active svg {
-  fill: #ffffff;
-}
-
-/* --- Major Overhaul Additional Styles --- */
-/* --- Major Overhaul Additional Styles (Cleaned) --- */
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 16px; /* Matched with player card */
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    margin: 1rem 0;
-    width: 100%;
-}
-
-.btn-top.syncing svg {
-    animation: spin 1s linear infinite;
-    fill: #fbbf24;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-.loading-spinner {
-    display: inline-block;
-    width: 1rem;
-    height: 1rem;
-    border: 2px solid rgba(255,255,255,0.2);
-    border-top-color: var(--brand-primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    vertical-align: middle;
-    margin-right: 0.5rem;
-}
-
-/* --- Audio Visualizer & Toggle Button Styles --- */
-.tuner-header {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    width: 100%;
-}
-
-.btn-viz-toggle {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    z-index: 11; /* Ensure it stays above visualizers */
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 8px;
-    padding: 6px;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.btn-viz-toggle:hover {
-    background: rgba(255,255,255,0.1);
-}
-
-.btn-viz-toggle svg {
-    width: 16px;
-    height: 16px;
-    fill: var(--brand-primary);
-    opacity: 0.6;
-}
-
-/* v2.6.0: 시각화를 배경 전체가 아니라 전용 띠(band)로 — 주파수/버튼과 겹치지 않게 */
-.visualizer-container {
-    position: relative;
-    width: 100%;
-    height: 150px;
-    z-index: 0;
-    pointer-events: none;
-    overflow: hidden;
-    display: flex;
-    align-items: center; /* Balanced for Ring/Wave/Cyber */
-    justify-content: center;
-    transition: opacity 0.3s;
-}
-
-/* Ensure main content is solid and positioned correctly */
-main {
-    position: relative;
-    z-index: 10;
-    background-color: var(--brand-dark);
-}
-
-/* --- Reference-Based Premium Visualizers (Extreme Fidelity) --- */
-
-/* Mode 1: Symmetrical Glow Waves (v1.2.2: Reverted to Center Symmetrical) */
-.visualizer-glow-layer {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    transform: translateY(-50%);
-    width: 100%;
-    height: 70%;
-    display: flex;
-    align-items: center; /* Back to symmetrical center alignment */
-    justify-content: space-evenly;
-    padding: 0;
-}
-
-.glow-line {
-    width: 4px;
-    background: linear-gradient(to bottom, #e4e4e7, #a1a1aa, #71717a); /* Soft Mono 파형 */
-    border-radius: 20px; /* Full rounded for symmetrical look */
-    will-change: height, opacity;
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
-    opacity: 0.85;
-}
-
-/* Mode 3: Sharp Dense Spectrum (Bottom Aligned - User's Favorite) */
-.visualizer-sharp-layer {
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    height: 70%;
-    display: flex;
-    align-items: flex-end; /* Strictly bottom aligned */
-    justify-content: center;
-    gap: 3px;
-    padding: 0; /* Fully expanded to edges */
-}
-
-/* Mode 2: Circular Organic Ring (Canvas based) */
-.visualizer-ring-layer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-}
-
-/* Glow Styles kept in Glow Line */
-
-/* Mode 3: Sharp Dense Spectrum (The Bars you liked) */
-.sharp-line {
-    width: 4px;
-    background: linear-gradient(to top, var(--brand-primary), #818cf8, #c084fc);
-    border-radius: 4px 4px 0 0;
-    will-change: height, opacity;
-    box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
-    opacity: 0.9;
-}
-
-@keyframes move-wave {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(50%); }
-}
-
-/* ============================================================
-   v2.6.0 Design Refresh
-   기능·레이아웃·색 정체성은 그대로. 타이포/깊이/디테일만 정제.
-   모든 규칙은 덧입히기(override)라 기존 요소·기능은 하나도 빠지지 않음.
-   ============================================================ */
-:root {
-  --font-display: 'Outfit', 'Pretendard', 'Inter', system-ui, sans-serif;
-}
-
-/* 배경: near-black + 은은한 화이트 글로우로 깊이감 (모노) */
-body {
-  background-color: var(--primary-bg);
-  background-image:
-    radial-gradient(900px 620px at 15% -6%, rgba(255, 255, 255, 0.05), transparent 55%),
-    radial-gradient(760px 640px at 92% 108%, rgba(255, 255, 255, 0.03), transparent 55%);
-}
-
-/* 로고 워드마크·헤더는 기존(Pretendard) 유지 — 사용자 피드백으로 원복 */
-
-/* 상단 시계: 자릿수 정렬 */
-#header-clock { font-variant-numeric: tabular-nums; }
 
 /* 주파수: 히어로 타이포 — tabular-nums + 은은한 화이트 발광 (모노) */
 #current-freq {
@@ -1143,23 +233,50 @@ body {
   color: transparent;
 }
 
-/* 방송명: 살짝 정제 */
-#current-name-text { letter-spacing: 0.01em; }
+/* 주파수 옆 MHz 단위 — 작고 은은하게 */
+.freq-unit {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--text-dim);
+  -webkit-text-fill-color: var(--text-dim);
+  margin-left: 6px;
+}
+
+/* 곡 제목/방송명 줄: 항상 한 줄 높이 (길면 말줄임·흐름) */
+#current-name { max-width: 80vw; }
+#current-name-text {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  letter-spacing: 0.01em;
+}
 
 /* 재생 버튼: 유리 질감 유지 + 은은한 화이트 글로우 (모노) */
 #play-btn {
   box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.65), 0 0 22px rgba(255, 255, 255, 0.14) !important;
 }
 
-/* 스테이션 카드: 표면·보더·그림자 정제 */
+/* ─── 방송 카드 (즐겨찾기·방송 목록·음악 하위 폴더) ─────────────── */
 .station-card {
+  background: var(--surface-bg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
-  border-color: rgba(255, 255, 255, 0.08);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
   box-shadow: 0 8px 22px -16px rgba(0, 0, 0, 0.9);
 }
 .station-card:hover {
   border-color: rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.04);
+  transform: translateY(-2px);
 }
 .station-card.active {
   border-color: rgba(255, 255, 255, 0.3);
@@ -1167,10 +284,398 @@ body {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 12px 28px -18px rgba(0, 0, 0, 0.9);
 }
 
-/* 주파수 뱃지: 라운드 정돈 (모노, 시스템 폰트) */
+/* 주파수 뱃지 */
 .station-badge {
+  position: relative; /* 안쪽 상단에 빨간 점(폴백 표시)을 얹기 위한 기준 */
+  flex-shrink: 0;
+  width: 3.5rem;
+  height: 3.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--brand-primary);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
-  border-radius: 14px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+/* 2차 후보(공식 폴백)가 있는 방송 표시용 빨간 점 — 주파수 배지 안쪽 상단 */
+.fallback-dot {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.85);
+}
+
+/* ─── 알림(토스트) ────────────────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 90%;
+  max-width: 400px;
+}
+
+.toast {
+  background: rgba(23, 23, 26, 0.94);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  pointer-events: none;
+  animation: toast-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.toast.has-action {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.toast-action {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.toast-action:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-20px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-20px) scale(0.9); }
+}
+
+
+/* ============================================================
+   음악 페이지 (폰 음원)
+   ============================================================ */
+/* 폰 폴더 지정 카드 */
+.music-add-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: var(--text-dim);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+.music-add-card svg { width: 18px; height: 18px; }
+.music-add-card:active { background: rgba(255, 255, 255, 0.04); }
+
+/* 안내 문구 */
+.music-empty {
+  padding: 22px 8px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* 폴더 머리줄: 아이콘(또는 ‹) 폴더명 [새 곡 반영] [폴더 변경] */
+.music-folder-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.music-folder-head h3 { flex: 1; min-width: 0; font-weight: 800; font-size: 17px; color: var(--text-main); }
+
+.music-folder-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+  color: var(--text-dim);
+}
+.music-folder-icon svg { width: 100%; height: 100%; display: block; }
+
+.music-change-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.music-change-btn:active { background: rgba(255, 255, 255, 0.08); }
+
+/* 작은 아이콘 버튼(뒤로) */
+.music-icon-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.music-icon-btn svg { width: 100%; height: 100%; display: block; }
+.music-icon-btn:active { background: rgba(255, 255, 255, 0.08); color: var(--text-main); }
+
+/* 폴더 고르는 방법 안내 + 보조 버튼 */
+.music-hint {
+  padding: 4px 8px 0;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.music-hint b { color: var(--text-main); font-weight: 700; }
+.music-link-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* 순차 / 랜덤 / 반복 세 버튼 (아이콘+글자 한 줄), 지금 재생 방식은 켜진 상태로 표시 */
+.music-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.music-action {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px 2px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: var(--surface-bg);
+  color: var(--text-main);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.music-action svg { width: 16px; height: 16px; }
+.music-action:active { background: rgba(255, 255, 255, 0.08); }
+.music-action:disabled { opacity: 0.35; cursor: default; }
+.music-action.on {
+  border-color: rgba(244, 63, 94, 0.45);
+  background: rgba(244, 63, 94, 0.10);
+  color: #fff;
+}
+.music-action.on svg { color: var(--brand-accent); }
+
+/* 폴더 안 곡 목록: 촘촘한 한 줄 목록 (한 줄 약 44px) */
+.music-tracks {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.music-track {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 6px;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.music-track:active { background: rgba(255, 255, 255, 0.05); }
+.music-track-no {
+  flex: none;
+  width: 24px;
+  display: inline-flex;
+  justify-content: flex-end;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.music-track-no svg { width: 14px; height: 14px; }
+.music-track-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: rgba(244, 244, 245, 0.85);
+}
+/* 재생 중인 곡: 번호 자리에 재생 표시(빨강), 제목 밝게 */
+.music-track.playing .music-track-no { color: var(--brand-accent); }
+.music-track.playing .music-track-name { color: #fff; font-weight: 700; }
+
+/* ─── 플레이어의 음악 전용 부분 ─────────────────────────────── */
+/* 레이아웃 고정 규칙: 한 화면 안에서 무엇을 눌러도 플레이어 영역 크기는 그대로.
+   상태에 따라 요소를 없애지(display:none) 않고, 자리는 남긴 채 보이거나 흐려지게만 한다.
+   body.music-mode = 음악 화면, body.music-idle = 음악 화면에서 아직 곡을 고르지 않음 */
+
+/* 진행 막대 줄: 현재 시간 ━━●── 전체 길이. 항상 자리 차지, 라디오 화면에서는 안 보이게만 */
+.music-progress {
+  display: flex;
+  visibility: hidden;
+  width: 100%;
+  max-width: 340px;
+  align-items: center;
+  gap: 10px;
+  margin-top: -4px;
+  position: relative;
+  z-index: 10;
+}
+.music-time {
+  flex: none;
+  min-width: 38px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+#music-seek {
+  --pct: 0%;
+  flex: 1;
+  height: 28px;           /* 손가락으로 잡기 쉽게 터치 영역은 넉넉히 */
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  touch-action: none;     /* 끄는 동안 화면 스크롤·넘김 방지 */
+}
+#music-seek::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--brand-accent) var(--pct), rgba(255, 255, 255, 0.15) var(--pct));
+}
+#music-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.25);
+}
+#music-seek::-moz-range-track { height: 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.15); }
+#music-seek::-moz-range-progress { height: 4px; border-radius: 999px; background: var(--brand-accent); }
+#music-seek::-moz-range-thumb { width: 14px; height: 14px; border: none; border-radius: 50%; background: #fff; }
+
+/* 이전/다음 곡 버튼: 항상 자리 차지, 음악 화면에서만 보임 */
+.music-nav-btn {
+  display: inline-flex;
+  visibility: hidden;
+  width: 48px;
+  height: 48px;
+  padding: 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-main);
+  opacity: 0.8;
+  cursor: pointer;
+}
+.music-nav-btn svg { width: 100%; height: 100%; display: block; }
+.music-nav-btn:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.08); }
+
+body.music-mode .music-progress,
+body.music-mode .music-nav-btn { visibility: visible; }
+/* 아직 곡을 고르지 않았으면 흐리게, 눌러지지 않게 */
+body.music-idle .music-progress,
+body.music-idle .music-nav-btn { opacity: 0.3; pointer-events: none; }
+
+/* 음악 화면: 주파수 자리에 곡 번호, MHz 숨김, 긴 곡 제목은 말줄임 */
+body.music-mode .freq-unit { display: none; }
+body.music-mode #current-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 다른 화면의 소리가 나오는 중이면 시각화를 흐리게 (이 화면 소리가 아님을 표시) */
+body.other-audio .visualizer-container { opacity: 0.15; }
+
+/* 긴 곡 제목 흐르기(마키): 넘칠 때만 .marquee 가 붙음 */
+.marquee {
+  text-overflow: clip !important;
+  text-align: left;
+  /* 양 끝을 살짝 흐리게 해서 글자가 자연스럽게 들어오고 나가게 */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 16px), transparent 100%);
+}
+.mq-inner {
+  display: inline-flex;
+  gap: var(--mq-gap, 48px);
+  will-change: transform;
+  animation: mq-scroll 10s linear infinite;
+}
+/* 처음 15%는 멈춰서 앞부분을 보여준 뒤 흐름 → 두 번째 제목이 처음 자리에 오면 반복 */
+@keyframes mq-scroll {
+  0%, 15% { transform: translateX(0); }
+  100% { transform: translateX(var(--mq-shift, -100%)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mq-inner { animation: none; }
+  .mq-inner > span + span { display: none; }
+  .marquee { text-overflow: ellipsis !important; }
+}
+
+/* 음악 페이지: 플레이어를 줄이고 곡 목록 공간을 넓게 */
+body[data-page="music"] #player-controls-ui { padding-top: 8px; padding-bottom: 10px; gap: 10px; }
+body[data-page="music"] .visualizer-container { height: 64px; }
+body[data-page="music"] #current-freq { font-size: 2.1rem; line-height: 1.1; }
+body[data-page="music"] #play-btn { width: 64px; height: 64px; }
+body[data-page="music"] #play-btn svg { width: 26px; height: 26px; }
+body[data-page="music"] .music-nav-btn { width: 44px; height: 44px; padding: 11px; }
+body[data-page="music"] #page-music { padding-top: 8px; }
