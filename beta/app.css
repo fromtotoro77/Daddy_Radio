@@ -1383,3 +1383,13 @@ body.music-mode #current-name {
   font-size: 13px;
 }
 .music-action svg { width: 16px; height: 16px; }
+
+/* 순차 / 랜덤 / 반복 세 버튼, 지금 재생 방식은 켜진 상태로 표시 */
+.music-actions { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.music-action { padding: 10px 2px; font-size: 12.5px; gap: 5px; }
+.music-action.on {
+  border-color: rgba(244, 63, 94, 0.45);
+  background: rgba(244, 63, 94, 0.10);
+  color: #fff;
+}
+.music-action.on svg { color: var(--brand-accent); }
