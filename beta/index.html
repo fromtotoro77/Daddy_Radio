@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>아빠 라디오 v3.1.0 BETA - 우리가족 </title>
+    <link rel="manifest" href="manifest.json?v=3.1.0">
+    <meta name="theme-color" content="#0c0c0e">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon-512.png">
+
+    <!-- Design System: Tailwind CSS v3 CDN -->
+    <script src="https://cdn.tailwindcss.com/3.4.17?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            primary: '#d4d4d8', // Soft Mono: near-white (light zinc)
+                            accent: '#f43f5e',  // Soft Mono: single red accent (live/favorite)
+                            dark: '#0c0c0e',    // Soft Mono: near-black bg
+                            surface: '#17171a'  // Soft Mono: card surface
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Pretendard', 'Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="app.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.7.3/dist/hls.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&family=Outfit:wght@700;900&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="bg-brand-dark text-white font-sans selection:bg-brand-primary/30 min-h-screen">
+    <main
+        class="flex flex-col h-screen h-[100dvh] app-main-width overflow-hidden bg-brand-dark border-x border-zinc-800 no-scrollbar">
+        <!-- FIXED TOP HEADER: Logo & Clock (Yellow Area) -->
+        <header class="flex-none p-6 pt-12 pb-4 bg-brand-dark z-50">
+            <div class="flex justify-between w-full items-center">
+                <div class="logo">
+                    <span class="text-2xl font-black tracking-tighter text-white">Daddy Radio <small
+                            class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v3.1.0 beta</small></span>
+                </div>
+                <div id="header-clock"
+                    class="text-2xl font-mono text-brand-primary opacity-90 uppercase tracking-widest">PM 00:00
+                </div>
+            </div>
+        </header>
+
+        <!-- TOP SECTION: Player Controls (Red Area reduced & Gradient smoothed) -->
+        <section id="top-header-section"
+            class="flex-none px-6 pb-2 bg-gradient-to-b from-brand-dark via-brand-surface to-brand-dark rounded-b-xl shadow-lg relative overflow-hidden transition-all duration-300">
+            <!-- Background Glow Decoration -->
+            <div class="absolute -top-10 -right-10 w-48 h-48 bg-brand-primary/5 rounded-full blur-[60px]"></div>
+
+            <div class="relative z-10 flex flex-col items-center">
+
+                <!-- v1.2.1: Isolated Visualizer Boundary Area (Below Title Row) -->
+                <div id="player-controls-ui" class="relative w-full flex flex-col items-center py-6 gap-4 overflow-hidden rounded-2xl transition-all duration-300">
+                    <!-- 1. ON AIR 램프 (항상 표시, 재생 중 점등) -->
+                    <div id="on-air" class="on-air"><i></i>ON AIR</div>
+
+                    <!-- 2. 시각화 (전용 띠) -->
+                    <div id="visualizer" class="visualizer-container">
+                        <div class="visualizer-glow-layer flex items-center justify-center gap-1.5 h-full w-full"></div>
+                        <div class="visualizer-sharp-layer flex justify-center gap-0.5 h-full w-full"
+                            style="display: none;"></div>
+                        <canvas id="viz-canvas" class="visualizer-canvas" style="display: none;"></canvas>
+                    </div>
+
+                    <!-- 3. 주파수 + 방송명 -->
+                    <div class="text-center relative z-10">
+                        <div id="current-freq" class="text-5xl font-black tracking-tighter text-white bg-clip-text">
+                            <span id="current-freq-text">--.-</span><span class="freq-unit">MHz</span>
+                        </div>
+                        <div id="current-name" class="text-brand-primary font-bold text-sm tracking-wide">
+                            <span id="current-name-text">채널을 선택하세요</span>
+                        </div>
+                    </div>
+
+                    <!-- 4. 재생 버튼 -->
+                    <div class="flex items-center gap-8 relative z-10">
+                        <button id="music-prev" class="music-nav-btn" aria-label="이전 곡">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+                        </button>
+                        <button id="play-btn"
+                            class="w-20 h-20 bg-white/10 backdrop-blur-[2px] border border-white/50 rounded-full flex items-center justify-center shadow-lg shadow-black/10 hover:scale-105 active:scale-95 transition-all">
+                            <svg id="play-icon" class="w-8 h-8 fill-white" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                            <svg id="pause-icon" class="w-8 h-8 fill-white" style="display: none;" viewBox="0 0 24 24">
+                                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                            </svg>
+                        </button>
+                        <button id="music-next" class="music-nav-btn" aria-label="다음 곡">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGE: Home (Favorites) -->
+        <div id="page-home" class="page active flex-grow flex flex-col overflow-hidden px-6 pt-4 pb-8 no-scrollbar">
+            <div id="station-list" class="flex-grow overflow-y-auto no-scrollbar space-y-4 pt-2 pb-10">
+                <!-- Favorites injected here -->
+            </div>
+        </div>
+
+        <!-- PAGE: Music (폰 음원) -->
+        <div id="page-music" class="page flex-grow flex flex-col overflow-hidden px-6 pt-4 pb-8 no-scrollbar"
+            style="display: none;">
+            <div id="music-view" class="flex-grow overflow-y-auto no-scrollbar space-y-4 pt-2 pb-10"></div>
+            <input id="music-file-input" type="file" accept="audio/*" multiple webkitdirectory hidden>
+        </div>
+
+        <!-- PAGE: Search (Explorer) -->
+        <div id="page-search" class="page flex-grow flex flex-col overflow-hidden px-6 pt-4 pb-8 no-scrollbar"
+            style="display: none;">
+            <div class="flex-none flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold">RADIO LIST</h2>
+                <button id="sync-btn"
+                    class="p-2 text-brand-primary hover:bg-brand-primary/10 rounded-full transition-colors" title="동기화">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path
+                            d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" />
+                    </svg>
+                </button>
+            </div>
+
+            <div id="search-view-results" class="flex-grow overflow-y-auto no-scrollbar space-y-4 pt-2 pb-10">
+                <!-- All stations injected here -->
+            </div>
+        </div>
+
+
+        <div id="toast-container" class="toast-container"></div>
+    </main>
+
+    <audio id="radio-audio"></audio>
+
+    <script>
+        // --- 전역 설정 및 상태 변수 ---
+        const audio = document.getElementById('radio-audio'); // 오디오 엘리먼트
+        audio.crossOrigin = "anonymous"; // CORS: 시각화(Web Audio) + 스트림 로드 전에 미리 설정
+        const playBtn = document.getElementById('play-btn');  // 재생 버튼
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
+        const freqDisplay = document.getElementById('current-freq-text'); // 주파수 표시 영역
+        const nameDisplay = document.getElementById('current-name-text'); // 방송명 표시 영역
+        const reloadBtn = document.getElementById('reload-btn');     // 스트림 재로드 버튼(제거됨, null 가능)
+        const onAir = document.getElementById('on-air');             // ON AIR 배지
+        const stationList = document.getElementById('station-list'); // 즐겨찾기 목록 컨테이너
+        const syncBtn = document.getElementById('sync-btn');         // 동기화 버튼
+        const searchViewResults = document.getElementById('search-view-results'); // 검색 결과 컨테이너
+        const visualizerArea = document.getElementById('visualizer');
+
+        let currentHls = null;      // 현재 HLS.js 인스턴스
+        let activeStationId = null; // 현재 활성화된(듣고 있는) 방송 ID
+        let isPlaying = false;      // 재생 상태 플래그
+        let lastLoadedStation = null; // stall/재로드 시 현재 방송 재시도용
+        let stallTimer = null;      // 5초 stall 감지 타이머
+        const STALL_TIMEOUT_MS = 5000;
+        let userStations = [];      // 사용자 즐겨찾기 방송 목록
+        let vizMode = 'waves';      // 현재 시각화 모드
+        let currentPage = 'home';   // 현재 활성화된 페이지
+
+        // Web Audio API 관련 변수
+        let audioCtx = null;        // 오디오 컨텍스트
+        let analyser = null;        // 오디오 분석기
+        let source = null;          // 오디오 소스
+        let dataArray = null;       // 실시간 주파수 데이터 배열
+        let animationId = null;     // 애니메이션 프레임 ID
+        let wakeLock = null;        // (사용되지 않음) 화면 꺼짐 방지 WakeLock API
+        let canvas = null;          // 시각화용 캔버스
+        let ctx = null;             // 캔버스 2D 컨텍스트
+        let glowLines = [];         // 파동 모드용 글로우 라인 엘리먼트들
+        let sharpLines = [];        // (구) 스펙트럼용 라인 엘리먼트들
+        let smoothedData = null;    // 부드러운 시각화를 위한 보정 데이터 배열
+        let eqCaps = new Array(64).fill(0);       // 모노 모드용 피크 캡 위치
+        let eqCapVelocity = new Array(64).fill(0); // 피크 캡 낙하 속도
+
+        // 우리 가족 전용 Cloudflare Worker 중계 서버 (radio.bsod.kr 대체)
+        const PROXY_BASE = 'https://daddy-radio.fromtotoro.workers.dev/stream/';
+        const OLD_PROXY_BASE = 'https://radio.bsod.kr/stream/';
+
+        // 기본 제공 방송 목록
+        const DEFAULT_STATIONS = [
+            { id: 'kbs_classic', name: 'KBS 1FM (클래식)', freq: '93.1MHz', url: `${PROXY_BASE}?stn=kbs&ch=1fm`, color: '#005bac' },
+            { id: 'kbs_cool', name: 'KBS 2FM (쿨FM)', freq: '89.1MHz', url: `${PROXY_BASE}?stn=kbs&ch=2fm`, color: '#e30613' },
+            { id: 'mbc_sfm', name: 'MBC 표준FM', freq: '95.9MHz', url: `${PROXY_BASE}?stn=mbc&ch=sfm`, color: '#e30613' },
+            { id: 'sbs_power', name: 'SBS 파워FM', freq: '107.7MHz', url: `${PROXY_BASE}?stn=sbs&ch=powerfm`, color: '#00a0e9' }
+        ];
+
+        // 검증된 한국 방송 목록 (검색용)
+        const VERIFIED_KR_STATIONS = [
+            { name: "KBS 1라디오", stn: "kbs", ch: "1radio", tags: "뉴스, 시사", freq: "97.3MHz" },
+            { name: "KBS 2라디오", stn: "kbs", ch: "2radio", tags: "음악, 토크", freq: "106.1MHz" },
+            { name: "KBS 3라디오", stn: "kbs", ch: "3radio", tags: "복지, 뉴스", freq: "104.9MHz" },
+            { name: "KBS 1FM (클래식)", stn: "kbs", ch: "1fm", tags: "클래식, 전수", freq: "93.1MHz" },
+            { name: "KBS 2FM (쿨FM)", stn: "kbs", ch: "2fm", tags: "대중음악", freq: "89.1MHz" },
+            { name: "MBC 표준FM", stn: "mbc", ch: "sfm", tags: "뉴스, 시사", freq: "95.9MHz" },
+            { name: "MBC FM4U", stn: "mbc", ch: "fm4u", tags: "음악, 예능", freq: "91.9MHz" },
+            { name: "MBC mini 올댓뮤직", stn: "mbc", ch: "chm", tags: "24시간 음악", freq: "디지털" },
+            { name: "SBS 러브FM", stn: "sbs", ch: "lovefm", tags: "시사, 가요", freq: "103.5MHz" },
+            { name: "SBS 파워FM", stn: "sbs", ch: "powerfm", tags: "음악, 예능", freq: "107.7MHz" },
+            { name: "SBS 고릴라디오M", stn: "sbs", ch: "dmb", tags: "24시간 음악", freq: "디지털" },
+            { name: "EBS FM", stn: "ebs", ch: "fm", tags: "교육, 외국어", freq: "104.5MHz" },
+            { name: "iFM 경인방송", stn: "ifm", ch: "", tags: "인천 지역 방송", freq: "90.7MHz" },
+            { name: "YTN 라디오", stn: "ytn", ch: "", tags: "24시간 뉴스", freq: "94.5MHz" },
+            { name: "TBS FM", stn: "tbs", ch: "fm", tags: "교통, 정보", freq: "95.1MHz" },
+            { name: "TBS eFM", stn: "tbs", ch: "efm", tags: "영어 방송", freq: "101.3MHz" },
+            { name: "CBS 표준FM", stn: "cbs", ch: "sfm", tags: "시사, 종교", freq: "98.1MHz" },
+            { name: "CBS 음악FM", stn: "cbs", ch: "mfm", tags: "음악, 팝, 가요", freq: "93.9MHz" }
+        ];
+
+        // 앱 초기 실행 함수
+        function init() {
+            try { loadStations(); } catch (e) { console.error(e); }      // 저장된 즐겨찾기 로드
+            try { setupEventListeners(); } catch (e) { console.error(e); } // 이벤트 리스너 설정
+            try { initVisualizer(); } catch (e) { console.error(e); }      // 시각화 엔진 초기화
+            try { updateVisualizerMode(); } catch (e) { console.error(e); } // 초기 시각화 모드 적용
+            try { updateClock(); } catch (e) { console.error(e); }        // 시계 시작
+            setInterval(() => {
+                try { updateClock(); } catch (e) { }
+            }, 1000);
+
+            // 데이터 스무딩 배열 초기화 (부드러운 시각화용)
+            smoothedData = new Float32Array(128);
+
+            // 중요: 초기 부팅 시 레이아웃 정렬 및 스크롤 활성화 (검색 페이지 이동 없이도 작동하게 함)
+            showPage('home');
+        }
+
+        // 디지털 시계 업데이트
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            const hoursStr = String(hours).padStart(2, '0');
+            const timeHTML = `${ampm} ${hoursStr}<span class="blink-colon">:</span>${minutes}`;
+            const clockEl = document.getElementById('header-clock');
+            if (clockEl) clockEl.innerHTML = timeHTML;
+        }
+
+        // 캔버스 크기 조정 (기기 픽셀 밀도 대응)
+        function resizeCanvas() {
+            if (!canvas) return;
+            canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+            canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+        }
+
+        // 시각화 요소들(DOM/Canvas) 준비
+        function initVisualizer() {
+            const glowLayer = document.querySelector('.visualizer-glow-layer');
+            const sharpLayer = document.querySelector('.visualizer-sharp-layer');
+            canvas = document.getElementById('viz-canvas');
+            ctx = canvas.getContext('2d');
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // 파동(Waves) 모드용 엘리먼트 생성
+            glowLayer.innerHTML = '';
+            glowLines = [];
+            for (let i = 0; i < 40; i++) {
+                const line = document.createElement('div');
+                line.className = 'glow-line';
+                glowLayer.appendChild(line);
+                glowLines.push(line);
+            }
+
+            // (구) 스펙트럼 모드용 엘리먼트 생성 (현재는 사용 안 함)
+            sharpLayer.innerHTML = '';
+            sharpLines = [];
+            // for (let i = 0; i < 50; i++) {
+            //     const line = document.createElement('div');
+            //     line.className = 'sharp-line';
+            //     sharpLayer.appendChild(line);
+            //     sharpLines.push(line);
+            // }
+        }
+
+        // 오디오 컨텍스트 및 분석기 초기화
+        function initAudioContext() {
+            if (audioCtx) return;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                audio.crossOrigin = "anonymous";
+                source = audioCtx.createMediaElementSource(audio);
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination);
+                analyser.fftSize = 256;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+            } catch (e) { console.error("Web Audio API Error:", e); }
+        }
+
+        // --- 시각화 메인 렌더링 루프 ---
+        function renderFrame() {
+            animationId = requestAnimationFrame(renderFrame);
+            if (!isPlaying || vizMode === 'off') return;
+
+            if (analyser) {
+                analyser.getByteFrequencyData(dataArray);
+
+                // 전역 시간적 스무딩 적용 (움직임을 부드럽게)
+                if (!smoothedData || smoothedData.length !== dataArray.length) {
+                    smoothedData = new Float32Array(dataArray.length);
+                }
+                for (let i = 0; i < dataArray.length; i++) {
+                    smoothedData[i] += (dataArray[i] - smoothedData[i]) * 0.08;
+                }
+            }
+
+            // 모드별 렌더링 선택
+            if (vizMode === 'waves') {
+                drawVisualizerLines(); // 기본 파동 모드
+            } else if (vizMode !== 'off') { // Canvas 기반 시각화 모드
+                if (!ctx) return;
+                const w = canvas.width;
+                const h = canvas.height;
+                const cx = w / 2;
+                const cy = h / 2;
+                ctx.clearRect(0, 0, w, h); // 캔버스 초기화
+
+                if (vizMode === 'ring') {
+                    // 액체 링(Liquid Ring)
+                    const time = Date.now();
+                    const bass = (smoothedData[2] / 255);
+                    const lineCount = 6;
+                    const baseRadius = Math.min(w, h) * 0.25 + (bass * 30);
+
+                    for (let l = 0; l < lineCount; l++) {
+                        const offset = l * (Math.PI / lineCount);
+                        ctx.beginPath();
+                        ctx.strokeStyle = `hsla(0, 0%, ${82 - l * 9}%, ${0.5 - l * 0.05})`; // Soft Mono
+                        ctx.lineWidth = 4 + (l * 2);
+
+                        for (let i = 0; i <= 120; i++) {
+                            const angle = (i / 60) * Math.PI;
+                            const freqIdx = Math.floor(i % (smoothedData.length / 2));
+                            const val = (smoothedData[freqIdx] / 255);
+                            const pulse = Math.sin(angle * 4 + time * 0.005 + offset) * (val * 25);
+                            const r = baseRadius + pulse;
+                            const x = cx + Math.cos(angle) * r;
+                            const y = cy + Math.sin(angle) * r;
+                            if (i === 0) ctx.moveTo(x, y);
+                            else ctx.lineTo(x, y);
+                        }
+                        ctx.closePath();
+                        ctx.stroke();
+                    }
+                } else if (vizMode === 'cyber') {
+                    // 사이버 기하학(Cyber Grid) - 부드러운 곡선 보간 적용
+                    const time = Date.now();
+                    const bass = (smoothedData[2] / 255);
+                    const baseHue = (time / 100) % 360;
+                    const lineCount = 4;
+                    ctx.shadowBlur = 10 + bass * 20;
+
+                    const pointsCount = Math.floor(smoothedData.length / 4);
+                    const sliceWidth = w / (pointsCount - 1);
+
+                    for (let l = 0; l < lineCount; l++) {
+                        const layerOffset = l * 0.5;
+                        const opacity = 0.6 - (l * 0.15);
+                        ctx.beginPath();
+                        ctx.strokeStyle = `hsla(0, 0%, ${80 - l * 7}%, ${opacity})`; // Soft Mono
+                        ctx.lineWidth = 2 + (lineCount - l) + (bass * 5);
+
+                        let points = [];
+                        for (let i = 0; i < pointsCount; i++) {
+                            const val = (smoothedData[i] / 255.0);
+                            const shift = Math.sin(i * 0.2 + time * 0.004 + layerOffset) * (val * h * 0.35);
+                            points.push({ x: i * sliceWidth, y: h / 2 + shift });
+                        }
+
+                        if (points.length > 0) {
+                            ctx.moveTo(points[0].x, points[0].y);
+                            for (let i = 1; i < points.length - 2; i++) {
+                                const xc = (points[i].x + points[i + 1].x) / 2;
+                                const yc = (points[i].y + points[i + 1].y) / 2;
+                                ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+                            }
+                            if (points.length > 2) {
+                                const i = points.length - 2;
+                                ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+                            }
+                        }
+                        ctx.stroke();
+                        ctx.shadowBlur = 10 + bass * 20;
+                        ctx.shadowColor = 'rgba(255, 255, 255, 0.4)'; // Soft Mono
+                    }
+                    ctx.shadowBlur = 0;
+                } else if (vizMode === 'mono') {
+                    // 모노 이퀄라이저(Mono EQ) - 차분한 톤(Indigo/Slate)으로 조정
+                    const step = Math.ceil(w / 64);
+                    const bass = (smoothedData[2] / 255);
+
+                    for (let x = 0; x < w; x += step) {
+                        const i = Math.floor((x / w) * 64);
+                        const val = smoothedData[i] || 0;
+                        const barH = (val / 255) * h * 0.75;
+                        
+                        // Soft Mono: 화이트/그레이 톤
+                        const opacity = 0.2 + (val / 255) * 0.45;
+                        ctx.fillStyle = `rgba(212, 212, 216, ${opacity})`;
+                        ctx.shadowBlur = 2 + (val / 255) * 5;
+                        ctx.shadowColor = `rgba(255, 255, 255, 0.2)`;
+                        ctx.fillRect(x, h - barH, step - 1, barH);
+
+                        // 피크 캡 낙하 로직
+                        if (barH > eqCaps[i]) {
+                            eqCaps[i] = barH;
+                            eqCapVelocity[i] = 0;
+                        } else {
+                            eqCapVelocity[i] += 0.4;
+                            eqCaps[i] -= eqCapVelocity[i];
+                            if (eqCaps[i] < 0) eqCaps[i] = 0;
+                        }
+
+                        // Soft Mono: 피크 캡은 밝은 화이트
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                        ctx.shadowBlur = 5; ctx.shadowColor = 'rgba(255, 255, 255, 0.4)';
+                        ctx.fillRect(x, h - eqCaps[i] - 1.5, step - 1, 1.5);
+
+                        ctx.shadowBlur = 0;
+                        // 상층 잔상은 더 어둡게 처리
+                        ctx.fillStyle = `rgba(212, 212, 216, 0.05)`;
+                        ctx.fillRect(x, h - barH - 6, step - 1, 2);
+                    }
+                    ctx.shadowBlur = 0;
+                } else if (vizMode === 'fire_wave') {
+                    // 코스믹 웜홀(Cosmic Wave)
+                    const time = Date.now();
+                    const lineCount = 20;
+                    const bass = (smoothedData[2] / 255);
+
+                    ctx.save();
+                    ctx.lineJoin = 'round';
+
+                    for (let l = 0; l < lineCount; l++) {
+                        const z = 1 - (l / lineCount);
+                        const opacity = Math.pow(z, 1.5) * 0.7;
+                        const lightness = 45 + (z * 40); // Soft Mono: 깊이에 따른 명도
+
+                        ctx.beginPath();
+                        ctx.strokeStyle = `hsla(0, 0%, ${lightness}%, ${opacity})`;
+                        ctx.lineWidth = 1 + (z * 3);
+
+                        const vanishingX = w;
+                        const segments = 120;
+                        const stepX = w / segments;
+
+                        for (let i = 0; i <= segments; i++) {
+                            const prog = i / segments;
+                            const depthFac = 1 - prog;
+                            const freqIdx = Math.floor(z * 40 + i * 0.2) % smoothedData.length;
+                            const val = (smoothedData[freqIdx] / 255);
+                            const wave = Math.sin(i * 0.15 - time * 0.005 + l * 0.3) * (val * h * 0.45 * depthFac * z);
+                            const posX = i * stepX;
+                            const posY = cy + wave;
+                            const finalX = posX * (1 - prog) + vanishingX * prog;
+                            const finalY = posY * (1 - prog) + cy * prog;
+
+                            if (i === 0) ctx.moveTo(finalX, finalY);
+                            else ctx.lineTo(finalX, finalY);
+                        }
+                        ctx.stroke();
+
+                        if (bass > 0.8 && l > lineCount - 5) {
+                            ctx.shadowBlur = 15; ctx.shadowColor = 'rgba(255, 255, 255, 0.7)'; // Soft Mono
+                            ctx.stroke();
+                            ctx.shadowBlur = 0;
+                        }
+                    }
+                    ctx.restore();
+                } else if (vizMode === 'mirror_polyline') {
+                    // MIRROR POLYLINE (v2.4.0 - Daddy Radio Style)
+                    const bass = (smoothedData[2] / 255);
+                    const activeRange = Math.floor(smoothedData.length * 0.75);
+                    const sliceWidth = w / (activeRange - 1);
+                    
+                    ctx.save();
+                    ctx.lineJoin = 'round';
+                    ctx.shadowBlur = 8 + bass * 12;
+                    ctx.shadowColor = 'rgba(255, 255, 255, 0.3)'; // Soft Mono
+
+                    // 상단 라인 (밝은 그레이)
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#e4e4e7';
+                    ctx.lineWidth = 2.5;
+                    for (let i = 0; i < activeRange; i++) {
+                        const val = (smoothedData[i] / 255);
+                        const y = cy - (val * h * 0.42) - 3;
+                        const x = i * sliceWidth;
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+
+                    // 하단 라인 (중간 그레이)
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#a1a1aa';
+                    ctx.lineWidth = 2.5;
+                    for (let i = 0; i < activeRange; i++) {
+                        const val = (smoothedData[i] / 255);
+                        const y = cy + (val * h * 0.42) + 3;
+                        const x = i * sliceWidth;
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+
+                    // 중앙 기준선 (은은한 화이트)
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+                    ctx.lineWidth = 1;
+                    ctx.moveTo(0, cy);
+                    ctx.lineTo(w, cy);
+                    ctx.stroke();
+                    
+                    ctx.restore();
+                }
+            }
+        }
+
+        // 기본 파동(Waves) 모드 렌더링
+        function drawVisualizerLines() {
+            if (glowLines.length === 0) return;
+            const step = Math.floor(dataArray.length / glowLines.length);
+            glowLines.forEach((line, i) => {
+                const val = dataArray[i * step] || 0;
+                const height = Math.max(8, (val / 255) * 85);
+                line.style.height = height + '%';
+                line.style.opacity = 0.5 + (val / 255) * 0.5;
+            });
+        }
+
+        // 로컬 스토리지에서 즐겨찾기 불러오기
+        function loadStations() {
+            const saved = localStorage.getItem('radio_stations');
+            userStations = saved ? JSON.parse(saved) : [...DEFAULT_STATIONS];
+            // 기존에 저장된 즐겨찾기의 구 프록시(bsod.kr) 주소를 새 전용 서버로 자동 이전
+            let migrated = false;
+            userStations.forEach(s => {
+                if (s.url && s.url.startsWith(OLD_PROXY_BASE)) {
+                    s.url = s.url.replace(OLD_PROXY_BASE, PROXY_BASE);
+                    migrated = true;
+                }
+            });
+            if (migrated) localStorage.setItem('radio_stations', JSON.stringify(userStations));
+            renderStations();
+            renderSearchList();
+        }
+
+        // 즐겨찾기 목록 UI 렌더링
+        function renderStations() {
+            if (userStations.length === 0) {
+                stationList.innerHTML = `<div class="p-8 text-center opacity-40 text-sm">즐겨찾기한 방송이 없습니다.</div>`;
+                return;
+            }
+            stationList.innerHTML = userStations.map(s => `
+                <div id="item-${s.id}" class="station-card ${s.id === activeStationId ? 'active' : ''}" onclick="selectStation('${s.id}')">
+                    <div class="station-badge">${hasFallback(s.url) ? '<span class="fallback-dot" title="대체 주소 있음 (연결 실패 시 자동 전환)"></span>' : ''}${s.freq.replace('MHz', '')}</div>
+                    <div class="flex-grow min-w-0">
+                        <h3 class="font-semibold text-zinc-100 truncate">${s.name}</h3>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button class="p-2 text-brand-accent hover:scale-110 active:scale-95 transition-all" onclick="window.removeStation(event, '${s.id}')" title="삭제">
+                            <svg class="h-5 w-5 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 전체 방송 목록(검색 창) UI 렌더링
+        function renderSearchList() {
+            searchViewResults.innerHTML = VERIFIED_KR_STATIONS.map(s => {
+                const url = `${PROXY_BASE}?stn=${s.stn}${s.ch ? '&ch=' + s.ch : ''}`;
+                const isSaved = userStations.some(us => us.url === url);
+                const sData = encodeURIComponent(JSON.stringify({ name: s.name, url: url, freq: s.freq }));
+                const freqText = s.freq.replace('MHz', '');
+                return `
+                    <div class="station-card" onclick="window.previewStation('${url}', '${s.name}', '${s.freq}')">
+                        <div class="station-badge">${hasFallback(url) ? '<span class="fallback-dot" title="대체 주소 있음 (연결 실패 시 자동 전환)"></span>' : ''}${freqText}</div>
+                        <div class="flex-grow min-w-0">
+                            <h3 class="font-semibold text-zinc-100 truncate">${s.name}</h3>
+                            <p class="text-[10px] text-zinc-400 uppercase tracking-tighter truncate">${s.tags}</p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button class="p-2 ${isSaved ? 'text-brand-accent' : 'text-zinc-500'} hover:scale-110 active:scale-95 transition-all" onclick="window.toggleFavorite(event, '${sData}')" title="즐겨찾기">
+                                ${isSaved ?
+                        `<svg class="h-5 w-5 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>` :
+                        `<svg class="h-5 w-5 fill-none stroke-current" stroke-width="2" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`
+                    }
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 이벤트 리스너 통합 설정
+        function setupEventListeners() {
+            playBtn.addEventListener('click', togglePlay);
+            syncBtn.addEventListener('click', synchronizeStreams);
+
+            // 스와이프 제스처 설정
+            let touchStartX = 0;
+            let touchEndX = 0;
+            const swipeThreshold = 50;
+
+            document.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, false);
+
+            document.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }, false);
+
+            function handleSwipe() {
+                const diff = touchEndX - touchStartX;
+                if (Math.abs(diff) > swipeThreshold) {
+                    // 왼쪽으로 밀면 다음 페이지, 오른쪽으로 밀면 이전 페이지 (끝에서 처음으로 순환)
+                    const PAGE_ORDER = ['home', 'music', 'search'];
+                    const cur = Math.max(0, PAGE_ORDER.indexOf(currentPage));
+                    const targetPage = PAGE_ORDER[(cur + (diff < 0 ? 1 : -1) + PAGE_ORDER.length) % PAGE_ORDER.length];
+                    
+                    // 스와이프 방향에 따른 애니메이션 처리를 위해 방향 정보 전달 (필요 시)
+                    window.showPage(targetPage);
+                }
+            }
+
+            // 상단 플레이어 영역 클릭 시 시각화 모드 전환
+            window.addEventListener('click', (e) => {
+                const nowPlayingSection = document.querySelector('section');
+                if (nowPlayingSection && nowPlayingSection.contains(e.target)) {
+                    if (!e.target.closest('button') && !e.target.closest('.station-card')) {
+                        cycleVisualizerMode();
+                    }
+                }
+            });
+        }
+
+        // 시각화 모드 순환 (Waves -> Ring -> Cyber -> Mono -> Cosmic -> Off)
+        function cycleVisualizerMode() {
+            const modes = ['waves', 'mirror_polyline', 'ring', 'cyber', 'mono', 'fire_wave', 'off'];
+            const modeNames = {
+                'waves': '파동',
+                'mirror_polyline': '미러라인',
+                'ring': '고리',
+                'cyber': '사이버',
+                'mono': '모노',
+                'fire_wave': '코스믹',
+                'off': '끄기'
+            };
+            vizMode = modes[(modes.indexOf(vizMode) + 1) % modes.length];
+            showToast(modeNames[vizMode]);
+            updateVisualizerMode();
+        }
+
+        // 선택된 모드에 따라 UI 및 캔버스 설정 업데이트
+        function updateVisualizerMode() {
+            const glow = document.querySelector('.visualizer-glow-layer');
+            const sharp = document.querySelector('.visualizer-sharp-layer');
+            const cvsLayer = document.getElementById('viz-canvas');
+
+            glow.style.display = vizMode === 'waves' ? 'flex' : 'none';
+            sharp.style.display = 'none'; 
+            cvsLayer.style.display = (vizMode !== 'waves' && vizMode !== 'off') ? 'block' : 'none';
+
+            if (vizMode !== 'waves' && vizMode !== 'off') setTimeout(resizeCanvas, 10);
+        }
+
+        // 특정 방송국 선택 및 재생 시작
+        function selectStation(id) {
+            const station = userStations.find(s => s.id === id);
+            if (!station) return;
+            activeStationId = id;
+            freqDisplay.textContent = station.freq.replace('MHz', '') || '--.-';
+            nameDisplay.textContent = 'CONNECTING...';
+            renderStations();
+            loadStream(station);
+        }
+
+        // 재시도용 cache-buster: 매번 새로운 signed token을 받도록 URL에 timestamp 추가
+        function withCacheBuster(url) {
+            const sep = url.includes('?') ? '&' : '?';
+            return `${url}${sep}_r=${Date.now()}`;
+        }
+
+        // 재생 stall(5초 이상 버퍼 대기) 감지 → 조용히 재로드
+        function clearStallTimer() {
+            if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
+        }
+        function armStallTimer() {
+            clearStallTimer();
+            if (!isPlaying || !lastLoadedStation) return;
+            stallTimer = setTimeout(() => {
+                if (!isPlaying) return;
+                // 5초간 재생 재개 안 됨 → 1차 소스부터 다시 시도(비고정 폴백)
+                loadStream(lastLoadedStation, 0, true);
+            }, STALL_TIMEOUT_MS);
+        }
+        audio.addEventListener('waiting', armStallTimer);
+        audio.addEventListener('stalled', armStallTimer);
+        audio.addEventListener('playing', clearStallTimer);
+        audio.addEventListener('pause', clearStallTimer);
+
+        // ─── 다중 소스 폴백(failover) ──────────────────────────────────
+        // true면 방송사 공식 소스를 먼저 시도(즉시 재생), 전용 서버(Cloudflare Worker)를 폴백으로.
+        // false면 전용 서버를 먼저, 실패 시 공식 소스로 폴백.
+        const PREFER_OFFICIAL_FIRST = true; // 공식 경로가 Worker보다 훨씬 빠름(실측) → 1순위
+
+        // 재생목록을 2~3조각(수 초)만 유지하는 방송 → 라이브 지점에 더 가깝게 재생해야 멈추지 않음
+        const SHORT_WINDOW_STATIONS = ['ifm'];
+
+        // 프록시 URL의 stn/ch → 방송사 공식 소스(브라우저 직접 재생, CORS 허용 확인됨)
+        // type: 'static'(정적 m3u8) | 'kbs'(JSON API) | 'sbs'(텍스트 API)
+        const STREAM_FALLBACKS = {
+            'kbs|1fm':     [{ type: 'kbs', code: 24 }],
+            'kbs|2fm':     [{ type: 'kbs', code: 25 }],
+            'kbs|1radio':  [{ type: 'kbs', code: 21 }],
+            'kbs|2radio':  [{ type: 'kbs', code: 22 }],
+            'kbs|3radio':  [{ type: 'kbs', code: 23 }],
+            'sbs|powerfm': [{ type: 'sbs', dev: 'powerpc', ch: 'powerfm' }],
+            'sbs|lovefm':  [{ type: 'sbs', dev: 'lovepc',  ch: 'lovefm' }],
+            'sbs|dmb':     [{ type: 'sbs', dev: 'sbsdmbpc', ch: 'sbsdmb' }], // 고릴라디오M (2026-10 채널명 dmb→sbsdmb)
+            'cbs|mfm':     [{ type: 'static', url: 'https://m-aac.cbs.co.kr/mweb_cbs939/_definst_/cbs939.stream/playlist.m3u8' }],
+            'cbs|sfm':     [{ type: 'static', url: 'https://m-aac.cbs.co.kr/mweb_cbs981/_definst_/cbs981.stream/playlist.m3u8' }],
+            'ebs|':        [{ type: 'static', url: 'https://ebsonair.ebs.co.kr/fmradiofamilypc/familypc1m/playlist.m3u8' }],
+            'ytn|':        [{ type: 'static', url: 'https://radiolive.ytn.co.kr/radio/_definst_/20211118_fmlive/playlist.m3u8' }],
+            'ifm|':        [{ type: 'static', url: 'https://stream.ifm.kr/live/aod1/playlist.m3u8' }]
+            // MBC는 resolve API가 CORS를 안 줘서 브라우저 직접 폴백 불가 → 프록시(bsod.kr)만 사용
+        };
+
+        // 프록시 URL에서 stn/ch 파라미터 추출
+        function parseStnCh(url) {
+            try {
+                const u = new URL(url, location.href);
+                return { stn: u.searchParams.get('stn') || '', ch: u.searchParams.get('ch') || '' };
+            } catch (e) { return null; }
+        }
+
+        // 이 방송에 2차 후보(공식 폴백)가 있는지 여부 → 목록에 빨간 점 표시용
+        function hasFallback(url) {
+            const p = parseStnCh(url);
+            if (!p) return false;
+            return !!(STREAM_FALLBACKS[`${p.stn}|${p.ch}`] || STREAM_FALLBACKS[`${p.stn}|`]);
+        }
+
+        // 방송국에 대한 우선순위 소스 목록 구성: [프록시(1차), ...공식 폴백]
+        function buildSources(station) {
+            const proxy = { type: 'proxy', url: station.url };
+            let fb = [];
+            const p = parseStnCh(station.url);
+            if (p) fb = STREAM_FALLBACKS[`${p.stn}|${p.ch}`] || STREAM_FALLBACKS[`${p.stn}|`] || [];
+            return PREFER_OFFICIAL_FIRST ? [...fb, proxy] : [proxy, ...fb];
+        }
+
+        // 소스 하나를 실제 재생 가능한 m3u8 URL로 해석(필요 시 API fetch)
+        async function resolveSource(src) {
+            if (src.type === 'proxy' || src.type === 'static') return src.url;
+            if (src.type === 'kbs') {
+                const r = await fetch(`https://cfpwwwapi.kbs.co.kr/api/v1/landing/live/channel_code/${src.code}`, { cache: 'no-store' });
+                const j = await r.json();
+                const u = j && j.channel_item && j.channel_item[0] && j.channel_item[0].service_url;
+                if (!u) throw new Error('KBS resolve 실패');
+                return u;
+            }
+            if (src.type === 'sbs') {
+                const r = await fetch(`https://apis.sbs.co.kr/play-api/1.0/livestream/${src.dev}/${src.ch}?protocol=hls&ssl=Y`, { cache: 'no-store' });
+                const t = (await r.text()).trim();
+                if (!/^https?:\/\//.test(t)) throw new Error('SBS resolve 실패');
+                return t;
+            }
+            throw new Error('알 수 없는 소스 타입');
+        }
+
+        // HLS 스트림 로드 (소스 목록을 순서대로 시도, 실패 시 자동 폴백)
+        // - sourceIndex: 현재 시도 중인 소스 인덱스
+        // - isReload: 사용자 재로드/조용한 재로드 여부
+        let loadToken = 0; // 겹치는 로드 요청 간 경쟁 상태 방지
+        async function loadStream(station, sourceIndex = 0, isReload = false) {
+            if (typeof window.exitMusicMode === 'function') window.exitMusicMode(); // 음악 재생 중이었다면 라디오로 전환
+            const myToken = ++loadToken;
+            clearStallTimer();
+            lastLoadedStation = station;
+            if (reloadBtn) reloadBtn.style.display = '';
+
+            if (currentHls) { try { currentHls.destroy(); } catch (e) {} currentHls = null; }
+
+            const sources = buildSources(station);
+
+            // 모든 소스 소진 → 최종 실패
+            if (sourceIndex >= sources.length) {
+                nameDisplay.textContent = station.name || '';
+                if (reloadBtn) reloadBtn.classList.add('attention'); // 재생 실패 알림 pulse
+                showToast('❌ 스트림 연결 실패', '', '다시 시도', reloadStream);
+                return;
+            }
+
+            const src = sources[sourceIndex];
+
+            // 시작 감시: 12초 안에 소리가 안 나오면 이 주소는 포기하고 다음 주소로.
+            // (재생이 한 번도 시작되지 않으면 stall 감지가 동작하지 않아 "연결 중"에 멈추는 것을 방지)
+            let started = false;
+            const onStarted = () => { started = true; };
+            audio.addEventListener('playing', onStarted, { once: true });
+            const startWatch = setTimeout(() => {
+                audio.removeEventListener('playing', onStarted);
+                if (started || myToken !== loadToken) return;
+                if (currentHls) { try { currentHls.destroy(); } catch (e) {} currentHls = null; }
+                goNext();
+            }, 12000);
+
+            const goNext = () => {
+                clearTimeout(startWatch);
+                if (myToken === loadToken) loadStream(station, sourceIndex + 1, isReload);
+            };
+
+            // 폴백(2차 이상)으로 넘어갈 때만 조용한 안내
+            if (sourceIndex > 0 && !isReload) showToast('대체 주소로 연결 중…');
+
+            // 소스 해석(API 호출 등). 실패하면 다음 소스로.
+            let url;
+            try {
+                url = await resolveSource(src);
+            } catch (e) {
+                goNext();
+                return;
+            }
+            if (myToken !== loadToken) return; // 더 최신 로드가 시작됨 → 폐기
+
+            // 프록시/정적 소스는 재로드 시 cache-buster로 fresh 요청 (KBS/SBS는 API가 매번 새 토큰 발급)
+            const finalUrl = (isReload && (src.type === 'proxy' || src.type === 'static')) ? withCacheBuster(url) : url;
+
+            // 재생 위치: 라이브 지점에서 조각 2개 뒤. 재생목록이 아주 짧은 방송(iFM: 2~3조각)은 1개 뒤.
+            const liveSyncCount = SHORT_WINDOW_STATIONS.includes((parseStnCh(station.url) || {}).stn) ? 1 : 2;
+
+            const onReady = () => {
+                if (myToken !== loadToken) return;
+                nameDisplay.textContent = station.name || '';
+                if (reloadBtn) reloadBtn.classList.remove('attention');
+                playAudio();
+            };
+
+            if (Hls.isSupported()) {
+                // 매니페스트 로드는 빠르게 실패시켜(폴백을 위해), 세그먼트는 넉넉히 재시도(재생 중 끊김 대비)
+                currentHls = new Hls({
+                    manifestLoadingMaxRetry: 1,
+                    manifestLoadingRetryDelay: 500,
+                    levelLoadingMaxRetry: 2,
+                    levelLoadingRetryDelay: 500,
+                    fragLoadingMaxRetry: 6,
+                    fragLoadingRetryDelay: 500,
+                    fragLoadingMaxRetryTimeout: 8000,
+                    maxBufferHole: 0.5,
+                    nudgeMaxRetry: 8,
+                    // 라이브 지점에서 조각 2개 뒤에서 재생.
+                    // 방송사 재생목록이 짧아서(iFM 3조각≈6초, KBS 5조각≈20초) 이보다 뒤를 잡으면
+                    // 목록 밖 위치를 요구해 재생이 멈춘다 → 반드시 목록 길이보다 작게 유지.
+                    liveSyncDurationCount: liveSyncCount
+                });
+                currentHls.loadSource(finalUrl);
+                currentHls.attachMedia(audio);
+                currentHls.on(Hls.Events.MANIFEST_PARSED, onReady);
+                currentHls.on(Hls.Events.ERROR, (evt, data) => {
+                    if (!data.fatal || myToken !== loadToken) return;
+                    // 미디어 오류는 HLS.js 내부 복구를 먼저 시도(같은 소스 유지)
+                    if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                        try { currentHls.recoverMediaError(); return; } catch (e) {}
+                    }
+                    try { currentHls.destroy(); } catch (e) {}
+                    goNext(); // 네트워크/매니페스트 오류 → 다음 소스로 폴백
+                });
+            } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+                // iOS Safari 등 네이티브 HLS 경로
+                audio.src = finalUrl;
+                const onOk = () => { audio.removeEventListener('error', onErr); onReady(); };
+                const onErr = () => { audio.removeEventListener('loadedmetadata', onOk); if (myToken === loadToken) goNext(); };
+                audio.addEventListener('loadedmetadata', onOk, { once: true });
+                audio.addEventListener('error', onErr, { once: true });
+            } else {
+                goNext();
+            }
+        }
+
+        // 재생/일시정지 토글
+        function togglePlay() {
+            if (isPlaying) pauseAudio();
+            else playAudio();
+        }
+
+        // 오디오 재생 및 분석 시작
+        function playAudio() {
+            if (!audio.src && !currentHls) return;
+            initAudioContext();
+            if (audioCtx?.state === 'suspended') audioCtx.resume();
+            audio.play().then(() => {
+                isPlaying = true;
+                playIcon.style.display = 'none';
+                pauseIcon.style.display = 'block';
+                if (onAir) onAir.classList.add('live');
+                // Trigger visualizer auto-start logic
+                if (!animationId) renderFrame();
+                // Ensure viz mode is not 'off' if we want it auto-on
+                if (vizMode === 'off') {
+                    vizMode = 'waves';
+                    updateVisualizerMode();
+                }
+            }).catch(e => { if (e.name !== 'AbortError') console.error(e); }); // 곡·방송을 빠르게 바꿀 때 나는 중단 알림은 무시
+        }
+
+        // 오디오 일시정지
+        function pauseAudio() {
+            audio.pause();
+            isPlaying = false;
+            playIcon.style.display = 'block';
+            pauseIcon.style.display = 'none';
+            if (onAir) onAir.classList.remove('live');
+        }
+
+        // 방송 목록 동기화 시뮬레이션
+        async function synchronizeStreams() {
+            if (syncBtn.classList.contains('spinning')) return;
+            syncBtn.classList.add('spinning');
+            showToast('방송 리스트 동기화 중...');
+            await new Promise(r => setTimeout(r, 1500));
+            loadStations();
+            syncBtn.classList.remove('spinning');
+            showToast('✅ 업데이트 완료', 'success');
+        }
+
+        // 알림 토스트 메시지 표시
+        // actionText/onAction이 지정되면 액션 버튼이 있는 토스트를 표시(더 오래 유지됨)
+        function showToast(message, type = '', actionText = null, onAction = null) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const hasAction = actionText && onAction;
+            toast.className = `toast ${type}${hasAction ? ' has-action' : ''}`;
+            if (hasAction) {
+                const span = document.createElement('span');
+                span.textContent = message;
+                toast.appendChild(span);
+                const btn = document.createElement('button');
+                btn.className = 'toast-action';
+                btn.textContent = actionText;
+                btn.onclick = () => {
+                    try { onAction(); } catch (e) { console.error(e); }
+                    toast.style.animation = 'toast-out 0.4s forwards';
+                    setTimeout(() => toast.remove(), 400);
+                };
+                toast.appendChild(btn);
+            } else {
+                toast.textContent = message;
+            }
+            container.appendChild(toast);
+            const duration = hasAction ? 6000 : 2500;
+            setTimeout(() => {
+                toast.style.animation = 'toast-out 0.4s forwards';
+                setTimeout(() => toast.remove(), 400);
+            }, duration);
+        }
+
+        // 사용자가 재로드 버튼을 눌렀을 때: 즉시 fresh 토큰으로 다시 스트림 로드
+        function reloadStream() {
+            if (!lastLoadedStation) return;
+            if (reloadBtn) {
+                reloadBtn.classList.remove('attention');
+                reloadBtn.classList.add('spinning');
+            }
+            // 스핀 애니메이션을 잠깐 보여주기 위해 40ms 지연
+            setTimeout(() => {
+                loadStream(lastLoadedStation, 0, true);
+                setTimeout(() => { if (reloadBtn) reloadBtn.classList.remove('spinning'); }, 900);
+            }, 40);
+        }
+        if (reloadBtn) reloadBtn.addEventListener('click', reloadStream);
+
+        // 재생이 성공적으로 진행되면 pulse 자동 해제
+        audio.addEventListener('playing', () => {
+            if (reloadBtn) reloadBtn.classList.remove('attention');
+        });
+
+        // 페이지 전환 및 스크롤 정책 적용
+        window.showPage = (id) => {
+            const mainWrap = document.querySelector('main');
+            // Hide all pages and remove active class
+            document.querySelectorAll('.page').forEach(p => {
+                p.style.display = 'none';
+                p.classList.remove('active');
+            });
+
+            const targetPage = document.getElementById(`page-${id}`);
+            targetPage.style.display = 'flex';
+            targetPage.classList.add('active');
+            currentPage = id;
+
+            // UI 최적화: 목록 페이지에서는 플레이어 숨기기
+            const topHeader = document.getElementById('top-header-section');
+            const playerUI = document.getElementById('player-controls-ui');
+            
+            if (id === 'search') {
+                playerUI.style.display = 'none';
+                topHeader.style.display = 'none'; // hide entire gradient on search
+                mainWrap.classList.add('main-scrollable');
+            } else {
+                playerUI.style.display = 'flex';
+                topHeader.style.display = 'block';
+                mainWrap.classList.remove('main-scrollable');
+            }
+
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                const isActive = btn.getAttribute('onclick').includes(`'${id}'`);
+                btn.classList.toggle('active', isActive);
+            });
+        };
+
+        // 미리듣기 (검색 목록에서 클릭 시)
+        window.previewStation = (url, name, freq) => {
+            activeStationId = 'preview';
+            freqDisplay.textContent = freq ? freq.replace('MHz', '') : '--.-';
+            nameDisplay.textContent = 'CONNECTING...';
+            loadStream({ name, url });
+        };
+
+        // 즐겨찾기 추가/삭제 토글
+        window.toggleFavorite = (e, sEncoded) => {
+            e.stopPropagation();
+            const s = JSON.parse(decodeURIComponent(sEncoded));
+            const idx = userStations.findIndex(us => us.name === s.name);
+            if (idx > -1) userStations.splice(idx, 1);
+            else userStations.push({ id: 'fav_' + Date.now(), name: s.name, freq: s.freq, url: s.url });
+            localStorage.setItem('radio_stations', JSON.stringify(userStations));
+            renderStations();
+            renderSearchList();
+        };
+
+        // 즐겨찾기 목록에서 삭제
+        window.removeStation = (e, id) => {
+            e.stopPropagation();
+            userStations = userStations.filter(us => us.id !== id);
+            localStorage.setItem('radio_stations', JSON.stringify(userStations));
+            renderStations();
+            renderSearchList(); // Sync search list heart state too
+        };
+
+        window.addEventListener('load', init);
+    </script>
+
+    <script src="music.js?v=3.1.0"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            // 베타: 서비스워커 등록 안 함
+        }
+    </script>
+</body>
+
+</html>
