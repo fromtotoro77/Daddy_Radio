@@ -3,9 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>아빠 라디오 v3.1.0 - 우리가족 </title>
-    <link rel="manifest" href="manifest.json?v=3.1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>아빠 라디오 v3.1.1 - 우리가족 </title>
+    <link rel="manifest" href="manifest.json?v=3.1.1">
     <meta name="theme-color" content="#0c0c0e">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -50,11 +50,11 @@
     <main
         class="flex flex-col h-screen h-[100dvh] app-main-width overflow-hidden bg-brand-dark border-x border-zinc-800 no-scrollbar">
         <!-- FIXED TOP HEADER: Logo & Clock (Yellow Area) -->
-        <header class="flex-none p-6 pt-12 pb-4 bg-brand-dark z-50">
+        <header class="app-header flex-none px-6 pb-4 bg-brand-dark z-50">
             <div class="flex justify-between w-full items-center">
                 <div class="logo">
                     <span class="text-2xl font-black tracking-tighter text-white">Daddy Radio <small
-                            class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v3.1.0</small></span>
+                            class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v3.1.1</small></span>
                 </div>
                 <div id="header-clock"
                     class="text-2xl font-mono text-brand-primary opacity-90 uppercase tracking-widest">PM 00:00
@@ -1056,11 +1056,11 @@
         window.addEventListener('load', init);
     </script>
 
-    <script src="music.js?v=3.1.0"></script>
+    <script src="music.js?v=3.1.1"></script>
 
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js?v=3.1.0');
+            navigator.serviceWorker.register('sw.js?v=3.1.1');
         }
     </script>
 </body>

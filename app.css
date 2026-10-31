@@ -49,6 +49,11 @@ html {
   position: relative;
 }
 
+/* 휴대폰 앱: 화면을 시계 줄 뒤까지 넓혀(viewport-fit=cover), 앱을 다시 띄울 때 그 사이에 선이 보이지 않게.
+   글자·버튼은 시계 줄·아래 버튼 줄 높이만큼 안쪽으로 둔다 (컴퓨터에서는 0이라 그대로) */
+.app-header { padding-top: calc(3rem + env(safe-area-inset-top, 0px)); }
+.app-main-width { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
 main {
   z-index: 10;
 }
