@@ -1,9 +1,11 @@
-const CACHE_NAME = 'daddy-radio-v3.1.2';
+const CACHE_NAME = 'daddy-radio-v3.1.3';
 const ASSETS = [
   './',
   './index.html',
   './app.css',
   './icon-512.png',
+  './icon-192.png',
+  './icon-maskable-512.png',
   './manifest.json',
   './music.js'
 ];

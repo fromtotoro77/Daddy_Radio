@@ -5,12 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>아빠 라디오 v3.1.2 - 우리가족 </title>
-    <link rel="manifest" href="manifest.json?v=3.1.2">
+    <link rel="manifest" href="manifest.json?v=3.1.3">
     <meta name="theme-color" content="#0c0c0e">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon-512.png">
+    <link rel="icon" href="icon-192.png">
     <!-- 보안: 정해진 곳(이 사이트, 디자인·재생 엔진 배포처, 글꼴)에서만 스크립트·스타일을 불러온다 -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob: data: https:; connect-src 'self' https:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 
@@ -47,6 +48,7 @@
 </head>
 
 <body class="bg-brand-dark text-white font-sans selection:bg-brand-primary/30 min-h-screen">
+    <button id="install-btn" hidden>홈 화면에 앱으로 설치</button>
     <main
         class="flex flex-col h-screen h-[100dvh] app-main-width overflow-hidden bg-brand-dark border-x border-zinc-800 no-scrollbar">
         <!-- FIXED TOP HEADER: Logo & Clock (Yellow Area) -->
@@ -54,7 +56,7 @@
             <div class="flex justify-between w-full items-center">
                 <div class="logo">
                     <span class="text-2xl font-black tracking-tighter text-white">Daddy Radio <small
-                            class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v3.1.2</small></span>
+                            class="ml-1 text-[0.75rem] opacity-40 font-bold tracking-widest uppercase">v3.1.3</small></span>
                 </div>
                 <div id="header-clock"
                     class="text-2xl font-mono text-brand-primary opacity-90 uppercase tracking-widest">PM 00:00
@@ -1056,12 +1058,45 @@
         window.addEventListener('load', init);
     </script>
 
-    <script src="music.js?v=3.1.2"></script>
+    <script src="music.js?v=3.1.3"></script>
 
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js?v=3.1.2');
+            navigator.serviceWorker.register('sw.js?v=3.1.3');
         }
+    </script>
+    <script>
+        // 설치는 브라우저 메뉴가 아니라 앱 안에서. (개발 정책 5항)
+        // 설치가 목적이니 숨기지 않는다. 웹으로 열면 맨 위에 보이고, 설치하면 사라진다.
+        (function () {
+            var deferred = null;
+            var btn = document.getElementById('install-btn');
+
+            function paint() { btn.hidden = !deferred; }
+            paint();
+
+            window.addEventListener('beforeinstallprompt', function (e) {
+                e.preventDefault();
+                deferred = e;
+                paint();
+            });
+
+            window.addEventListener('appinstalled', function () {
+                deferred = null;
+                paint();
+            });
+
+            btn.addEventListener('click', function () {
+                if (!deferred) return;
+                var e = deferred;
+                deferred = null;
+                e.prompt();
+                e.userChoice.then(function (c) {
+                    if (c.outcome !== 'accepted') deferred = e;
+                    paint();
+                });
+            });
+        })();
     </script>
 </body>
 

@@ -684,3 +684,29 @@ body[data-page="music"] #play-btn { width: 64px; height: 64px; }
 body[data-page="music"] #play-btn svg { width: 26px; height: 26px; }
 body[data-page="music"] .music-nav-btn { width: 44px; height: 44px; padding: 11px; }
 body[data-page="music"] #page-music { padding-top: 8px; }
+
+
+/* 설치 띠. Daddy 시리즈 공통 - 화면 맨 위, 전체 너비.
+   설치가 목적이니 숨기지 않는다. 설치하고 나면 사라진다. */
+#install-btn {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  padding: 0.7rem 1rem;
+  padding-top: max(0.7rem, env(safe-area-inset-top));
+  border: 0;
+  border-bottom: 1px solid #27272a;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(8px);
+  color: var(--text-main);
+  font-family: var(--font-main);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+#install-btn:active { background: rgba(255, 255, 255, 0.14); }
+#install-btn[hidden] { display: none; }
